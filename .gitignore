@@ -1,0 +1,22 @@
+backup_old_files/
+.venv/
+venv/
+temp/*
+.idea/
+*.npy
+.vscode
+modules/__pycache__/
+ZeroPMDB/
+data/models/*
+__pycache__
+
+# Ignore all zip
+*.zip
+
+# Temporarily ignore all .tif, .jpeg
+*.tif
+*.tiff
+*.jpeg
+
+# Temporarily ignore fingerprints
+# data/fingerprints/* 
