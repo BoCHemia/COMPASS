@@ -2,6 +2,8 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
+from pathlib import Path
+import pubchempy as pcp
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 from rdkit.Chem import rdFingerprintGenerator
@@ -13,6 +15,8 @@ from rdkit.Chem.MolStandardize import rdMolStandardize
 # Data and model loading
 # -----------------------------
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent 
+
 def load_training_array(filename, use_subset=False, subset_n=6000):
 
     """
@@ -21,7 +25,7 @@ def load_training_array(filename, use_subset=False, subset_n=6000):
 
     """
     # load fingerprints
-    fingerprints_file = os.path.join("..", "data", "fingerprints", filename + '_fingerprints.csv')
+    fingerprints_file = os.path.join(PROJECT_ROOT, "data", "fingerprints", filename + '_fingerprints.csv')
     fingerprints = pd.read_csv(fingerprints_file)
 
     # ensure that there is not NA in the data
@@ -41,7 +45,7 @@ def preprocess_data(filename):
     :param filename: name tag
     :return: pandas DataFrame of fingerprints
     """
-    input_df_path = os.path.join("..", "data", "input", filename + ".csv")
+    input_df_path = os.path.join(PROJECT_ROOT, "data", "input", filename + ".csv")
     df = pd.read_csv(input_df_path)
     df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
     df_fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES'))
@@ -53,7 +57,11 @@ def save_fingerprints(fingerprints, filename):
     :param fingerprints: fingerprints dataframe
     :param filename: name tag
     """
-    fingerprints_df_path = os.path.join("..", "data", "fingerprints", filename + "_fingerprints.csv")
+
+    out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
+    os.makedirs(out_dir, exist_ok=True)
+
+    fingerprints_df_path = os.path.join(out_dir, filename + "_fingerprints.csv")
     fingerprints.to_csv(fingerprints_df_path)
     print("Fingerprints saved to ", fingerprints_df_path)
 
@@ -63,7 +71,7 @@ def load_fingerprints(filename):
     :param filename:
     :return:
     """
-    fingerprints_df_path = os.path.join("..", "data", "fingerprints", filename + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", "fingerprints", filename + "_fingerprints.csv")
     fingerprints = pd.read_csv(fingerprints_df_path)
     return fingerprints
 

@@ -21,12 +21,15 @@ import yaml
 # -----------------------------
 # utils? 
 # -----------------------------
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent 
+
 def ensure_dirs():
     """
     Ensure that the folders temp and output exist, and if not, create them
     """
-    os.makedirs(os.path.join("..", "temp"), exist_ok=True)
-    os.makedirs(os.path.join("..", "output"), exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_ROOT, "temp"), exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_ROOT, "output"), exist_ok=True)
 
 
 def save_pickle(obj, path):
@@ -54,7 +57,7 @@ def load_configs(params = 'tsne_params'):
     :param params: name of file in config folder (without the .yaml)
     :return: dictionary of hyperparameters to be used for tSNE training
     """
-    with open(os.path.join('..', 'config', params+'.yaml'), 'r') as file:
+    with open(os.path.join(PROJECT_ROOT, 'config', params+'.yaml'), 'r') as file:
         hyperparameters = yaml.safe_load(file)
     return hyperparameters['hyperparameters']
 
@@ -90,8 +93,8 @@ def save_model(model, filename):
     @param filename: name tag of the original data file (e.g. for 'data_market.csv' the filename would be 'data_market')
     """
     ensure_dirs()
-    model_path = os.path.join("..", "temp", filename + '_trained_tSNE.pkl')
-    model_path_zip = os.path.join("..", "output", filename + '_trained_tSNE.zip')
+    model_path = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
+    model_path_zip = os.path.join(PROJECT_ROOT, "output", filename + '_trained_tSNE.zip')
 
     # Saving trained tSNE object to temp folder
     print("--> Pickle tSNE object")
@@ -114,14 +117,14 @@ def save_coordinates(coordinates, filename, inchikeys = None):
     :param filename: name tag of the original data file (e.g. for 'data_market.csv')
     :param inchikeys: optional - list of inchikeys, for example from original data file
     """
-    coordinates_path = os.path.join("..", "temp", filename + '_coordinates_tSNE.csv')
+    coordinates_path = os.path.join(PROJECT_ROOT, "temp", filename + '_coordinates_tSNE.csv')
     # coordinates.columns = ['TSNE1', 'TSNE2']
     if inchikeys:
         coordinates.index = inchikeys
     coordinates.to_csv(coordinates_path, index=True)
 
 def load_coordinates(filename):
-    coordinates_path = os.path.join("..", "temp", filename + '_coordinates_tSNE.csv')
+    coordinates_path = os.path.join(PROJECT_ROOT, "temp", filename + '_coordinates_tSNE.csv')
     coordinates = pd.read_csv(coordinates_path)
     return coordinates
 
@@ -133,12 +136,12 @@ def load_model(filename, from_zip = False):
     :return: model object
     """
     if from_zip:
-        model_path_zip = os.path.join("..", "output", filename + '_trained_tSNE.zip')
-        model_name = os.path.join("..", "temp", filename + '_trained_tSNE.pkl')
+        model_path_zip = os.path.join(PROJECT_ROOT, "output", filename + '_trained_tSNE.zip')
+        model_name = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
         archive = ZipFile(model_path_zip, 'r')
         model = archive.read(model_name) # todo: this does not work - it says it's a possible zip bomb (:
     else:
-        model_path = os.path.join("..", "temp", filename + '_trained_tSNE.pkl')
+        model_path = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
         model = load_pickle(model_path)
     return model
 
@@ -186,66 +189,66 @@ def transform_target(model, target_X):
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     return coordinates_df
 
-# -----------------------------
-# Visualization
-# -----------------------------
-def plot_embedding(target_chemicals_space,
-                   fig_path='output/target_space_static_test.tif'):
-    """
-    Plots the simple scatter as in the original script and saves it.
-    Skips re-plot if the file already exists.
-    """
-    if os.path.exists(fig_path):
-        print(f"[cache] Figure already exists at {fig_path}; skipping re-plot.")
-        return
+# # -----------------------------
+# # Visualization
+# # -----------------------------
+# def plot_embedding(target_chemicals_space,
+#                    fig_path='output/target_space_static_test.tif'):
+#     """
+#     Plots the simple scatter as in the original script and saves it.
+#     Skips re-plot if the file already exists.
+#     """
+#     if os.path.exists(fig_path):
+#         print(f"[cache] Figure already exists at {fig_path}; skipping re-plot.")
+#         return
 
-    ax = sns.scatterplot(data=target_chemicals_space, x='tsne_v1', y='tsne_v2',
-                         s=1, alpha=1, edgecolor='black')
-    ax.legend(loc='upper left', bbox_to_anchor=(1.00, 0.75), ncol=1)
-    plt.axis('off')
-    plt.savefig(fig_path, bbox_inches='tight', dpi=1800)
-    plt.close()
-    print(f"[out] Saved figure to {fig_path}")
+#     ax = sns.scatterplot(data=target_chemicals_space, x='tsne_v1', y='tsne_v2',
+#                          s=1, alpha=1, edgecolor='black')
+#     ax.legend(loc='upper left', bbox_to_anchor=(1.00, 0.75), ncol=1)
+#     plt.axis('off')
+#     plt.savefig(fig_path, bbox_inches='tight', dpi=1800)
+#     plt.close()
+#     print(f"[out] Saved figure to {fig_path}")
 
-def plot_embedding(coordinates, filename, format = '.tif'):
-    """
-    Plot a coordinates file #todo define what we really need here
-    :param coordinates: coordinates dataframe
-    :param filename: name tag
-    :param format: output format of the plot (e.g., '.png', '.pdf'). '.tif' by default
-    """
-    print(f"--> Plotting {filename}")
-    ax = sns.scatterplot(data=coordinates, x='TSNE1', y='TSNE2',
-                         s=1, alpha=1, edgecolor='black')
-    fig_path = os.path.join("..", "output", filename + "plot" + format)
-    ax.legend(loc='upper left', bbox_to_anchor=(1.00, 0.75), ncol=1)
-    plt.axis('off')
-    plt.savefig(fig_path, bbox_inches='tight', dpi=1800)
-    plt.close()
-    print(f"[out] Saved figure to {fig_path}")
-
-
-# -----------------------------
-# Main
-# -----------------------------
-def main():
-    ensure_dirs()
-
-    # 1) Load training set -> boolean array (subset) with caching
-    X = load_training_array()
-
-    # 2) Fit (or load) TSNE model
-    embedding_train, _ = fit_tsne_model(X) # _ catches the coordinates
-
-    # 3) Load target dataset fingerprints (bool) with caching
-    target_space_fingerprints = load_target_space()
-
-    # 4) Transform target fingerprints into TSNE space (cache npy + csv)
-    _, target_chemicals_space = transform_target(embedding_train, target_space_fingerprints)
-
-    # 5) Plot and save figure (skip if already there)
-    plot_embedding(target_chemicals_space)
+# def plot_embedding(coordinates, filename, format = '.tif'):
+#     """
+#     Plot a coordinates file #todo define what we really need here
+#     :param coordinates: coordinates dataframe
+#     :param filename: name tag
+#     :param format: output format of the plot (e.g., '.png', '.pdf'). '.tif' by default
+#     """
+#     print(f"--> Plotting {filename}")
+#     ax = sns.scatterplot(data=coordinates, x='TSNE1', y='TSNE2',
+#                          s=1, alpha=1, edgecolor='black')
+#     fig_path = os.path.join(PROJECT_ROOT, "output", filename + "plot" + format)
+#     ax.legend(loc='upper left', bbox_to_anchor=(1.00, 0.75), ncol=1)
+#     plt.axis('off')
+#     plt.savefig(fig_path, bbox_inches='tight', dpi=1800)
+#     plt.close()
+#     print(f"[out] Saved figure to {fig_path}")
 
 
-if __name__ == "__main__":
-    main()
+# # -----------------------------
+# # Main
+# # -----------------------------
+# def main():
+#     ensure_dirs()
+
+#     # 1) Load training set -> boolean array (subset) with caching
+#     X = load_training_array()
+
+#     # 2) Fit (or load) TSNE model
+#     embedding_train, _ = fit_tsne_model(X) # _ catches the coordinates
+
+#     # 3) Load target dataset fingerprints (bool) with caching
+#     target_space_fingerprints = load_target_space()
+
+#     # 4) Transform target fingerprints into TSNE space (cache npy + csv)
+#     _, target_chemicals_space = transform_target(embedding_train, target_space_fingerprints)
+
+#     # 5) Plot and save figure (skip if already there)
+#     plot_embedding(target_chemicals_space)
+
+
+# if __name__ == "__main__":
+#     main()
