@@ -322,10 +322,14 @@ def calculate_descriptors_morgan(smiles, **kwargs):
     """
 
     mol = myMolFromSmiles(smiles)
+    
     gen = rdFingerprintGenerator.GetMorganGenerator(**kwargs)
     fp = gen.GetFingerprint(mol)
-    arr = np.zeros((fp.GetNumBits(),), dtype=bool)
+    arr = np.zeros((fp.GetNumBits(),), dtype=float)
     DataStructs.ConvertToNumpyArray(fp, arr)
+
+    if (smiles=="") or (mol is None):
+        arr[:] = np.nan
 
     return arr
 
