@@ -6,7 +6,7 @@ from modules.preprocessing import *
 
 # load tSNE model object
 reference_data_name = "data_market"
-model = load_model(reference_data_name, from_zip=False)
+model = load_model(reference_data_name, from_zip=True)
 
 # load data to plot
 new_data_name = 'pfas_data'

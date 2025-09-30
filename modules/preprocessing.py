@@ -21,7 +21,7 @@ def load_training_array(filename, use_subset=False, subset_n=6000):
 
     """
     # load fingerprints
-    fingerprints_file = os.path.join("..", "data", "fingerprints", filename + '_fingerprints.csv')
+    fingerprints_file = os.path.join("..", "temp", filename + '_fingerprints.csv')
     fingerprints = pd.read_csv(fingerprints_file)
 
     # ensure that there is not NA in the data
@@ -53,7 +53,7 @@ def save_fingerprints(fingerprints, filename):
     :param fingerprints: fingerprints dataframe
     :param filename: name tag
     """
-    fingerprints_df_path = os.path.join("..", "data", "fingerprints", filename + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join("..", "temp", filename + "_fingerprints.csv")
     fingerprints.to_csv(fingerprints_df_path)
     print("Fingerprints saved to ", fingerprints_df_path)
 
@@ -63,7 +63,7 @@ def load_fingerprints(filename):
     :param filename:
     :return:
     """
-    fingerprints_df_path = os.path.join("..", "data", "fingerprints", filename + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join("..", "temp", filename + "_fingerprints.csv")
     fingerprints = pd.read_csv(fingerprints_df_path)
     return fingerprints
 
