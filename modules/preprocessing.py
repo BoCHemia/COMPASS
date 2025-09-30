@@ -1,4 +1,5 @@
 import os
+import time
 import pickle
 import numpy as np
 import pandas as pd
@@ -8,8 +9,6 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.MolStandardize import rdMolStandardize
-
-
 
 # -----------------------------
 # Data and model loading
@@ -25,7 +24,7 @@ def load_training_array(filename, use_subset=False, subset_n=6000):
 
     """
     # load fingerprints
-    fingerprints_file = os.path.join(PROJECT_ROOT, "data", "fingerprints", filename + '_fingerprints.csv')
+    fingerprints_file = os.path.join(PROJECT_ROOT, "temp", "fingerprints", filename + '_fingerprints.csv')
     fingerprints = pd.read_csv(fingerprints_file)
 
     # ensure that there is not NA in the data
@@ -80,7 +79,7 @@ def load_fingerprints(filename):
 # -----------------------------
 
 
-def get_pubchem_data(df, col_inchikey, col_cas, col_name, output_file, resume=False):
+def get_pubchem_data(df, col_inchikey, col_cas, col_name, output_file, resume=True):
     """ Fetches IUPAC name, SMILES, and InChI strings from PubChem for a list of chemicals 
     provided in dataframe with their InChIKeys, CAS numbers and chemical names, saving regularly to avoid data loss.
     Allows to resume from last saved compound.
