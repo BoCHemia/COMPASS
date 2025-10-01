@@ -131,7 +131,7 @@ def save_coordinates(coordinates, filename, inchikeys = None):
     """
     coordinates_path = os.path.join("..", "temp", filename + '_coordinates_tSNE.csv')
     # coordinates.columns = ['TSNE1', 'TSNE2']
-    if inchikeys:
+    if inchikeys is not None:
         coordinates.index = inchikeys
     coordinates.to_csv(coordinates_path, index=True)
 

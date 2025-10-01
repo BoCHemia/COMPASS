@@ -29,11 +29,14 @@ def load_training_array(filename, use_subset=False, subset_n=6000):
     print("Loaded fingerprints data size:", fingerprints.shape)
 
     # obtain training data
-    X = np.array(fingerprints).astype('bool')  # full data
-    X = X[:subset_n] if use_subset else X
+     # full data
+    fingerprints = fingerprints[:subset_n] if use_subset else fingerprints
+    inchikeys = fingerprints['INCHIKEY']
+    fingerprints.drop('INCHIKEY', axis=1, inplace=True)
+    X = np.array(fingerprints).astype('bool')
     print("Size of training array:", X.size)
 
-    return X
+    return X, inchikeys
 
 def preprocess_data(filename):
     """
@@ -45,6 +48,7 @@ def preprocess_data(filename):
     df = pd.read_csv(input_df_path)
     df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
     df_fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES'))
+    df_fingerprints['INCHIKEY'] = df['INCHIKEY']
     return df_fingerprints
 
 def save_fingerprints(fingerprints, filename):
