@@ -2,8 +2,7 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
-from openTSNE.tsne import TSNE
-# from openTSNE.sklearn import TSNE
+from openTSNE.sklearn import TSNE
 import matplotlib.pyplot as plt
 import seaborn as sns
 from zipfile import ZipFile
@@ -65,7 +64,7 @@ def load_configs(params = 'tsne_params'):
 # Modeling
 # -----------------------------
 
-def fit_tsne_model(X):
+def fit_tsne_model(df_fingerprints):
     """
     Fits the TSNE model on the boolean fingerprint array (X) and saves the fitted embedding object.
     If the pickled object exists, it is loaded instead of training again.
@@ -77,14 +76,18 @@ def fit_tsne_model(X):
     # Load hyperparameters of t-SNE from config
     hyperparameters_dict = load_configs('tsne_params')
 
+    # Prepare boolean fingerprint array
+    df_fingerprints.dropna(inplace=True)
+    X = np.array(df_fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+
     # Training
     print('--> Start training')
     tsne = TSNE(**hyperparameters_dict)
-    model = tsne.fit(X)
-    coordinates = pd.DataFrame(model.transform(X))
-    # coordinates, model = tsne.fit_transform(X)
+    coordinates = pd.DataFrame(tsne.fit_transform(X), columns=['TSNE1', 'TSNE2'])
+    coordinates.index = df_fingerprints['INCHIKEY']
+
     print('Finished training')
-    return model, coordinates
+    return tsne, coordinates
 
 def save_model(model, filename):
     """
@@ -107,22 +110,26 @@ def save_model(model, filename):
         zipf.write(model_path)
     print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
 
-def save_coordinates(coordinates, filename, inchikeys = None):
+def save_coordinates(coordinates, filename):
     """
     Save coordinates to csv file with the columns TSNE1 and TSNE2
 
      #todo: check for consistency - ideally we would alsways get the same output here for visualization
 
-    :param coordinates: coordinates as received from model fitting
+    :param coordinates: coordinates as received from model fitting with index as InChIKey
     :param filename: name tag of the original data file (e.g. for 'data_market.csv')
-    :param inchikeys: optional - list of inchikeys, for example from original data file
     """
     coordinates_path = os.path.join(PROJECT_ROOT, "temp", filename + '_coordinates_tSNE.csv')
-    # coordinates.columns = ['TSNE1', 'TSNE2']
-    if inchikeys:
-        coordinates.index = inchikeys
     coordinates.to_csv(coordinates_path, index=True)
 
+    input_df_path = os.path.join(PROJECT_ROOT, "data", filename, "input_" + filename + ".csv")
+    df = pd.read_csv(input_df_path)
+    df_coordinates = df.merge(coordinates, on='INCHIKEY', how='left')
+
+    output_path = os.path.join(PROJECT_ROOT, "data", filename, "output_" + filename + '.csv')
+    df_coordinates.to_csv(output_path, index=True)
+
+    
 def load_coordinates(filename):
     coordinates_path = os.path.join(PROJECT_ROOT, "temp", filename + '_coordinates_tSNE.csv')
     coordinates = pd.read_csv(coordinates_path)
@@ -188,67 +195,3 @@ def transform_target(model, target_X):
     coordinates_target = model.transform(target_X)
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     return coordinates_df
-
-# # -----------------------------
-# # Visualization
-# # -----------------------------
-# def plot_embedding(target_chemicals_space,
-#                    fig_path='output/target_space_static_test.tif'):
-#     """
-#     Plots the simple scatter as in the original script and saves it.
-#     Skips re-plot if the file already exists.
-#     """
-#     if os.path.exists(fig_path):
-#         print(f"[cache] Figure already exists at {fig_path}; skipping re-plot.")
-#         return
-
-#     ax = sns.scatterplot(data=target_chemicals_space, x='tsne_v1', y='tsne_v2',
-#                          s=1, alpha=1, edgecolor='black')
-#     ax.legend(loc='upper left', bbox_to_anchor=(1.00, 0.75), ncol=1)
-#     plt.axis('off')
-#     plt.savefig(fig_path, bbox_inches='tight', dpi=1800)
-#     plt.close()
-#     print(f"[out] Saved figure to {fig_path}")
-
-# def plot_embedding(coordinates, filename, format = '.tif'):
-#     """
-#     Plot a coordinates file #todo define what we really need here
-#     :param coordinates: coordinates dataframe
-#     :param filename: name tag
-#     :param format: output format of the plot (e.g., '.png', '.pdf'). '.tif' by default
-#     """
-#     print(f"--> Plotting {filename}")
-#     ax = sns.scatterplot(data=coordinates, x='TSNE1', y='TSNE2',
-#                          s=1, alpha=1, edgecolor='black')
-#     fig_path = os.path.join(PROJECT_ROOT, "output", filename + "plot" + format)
-#     ax.legend(loc='upper left', bbox_to_anchor=(1.00, 0.75), ncol=1)
-#     plt.axis('off')
-#     plt.savefig(fig_path, bbox_inches='tight', dpi=1800)
-#     plt.close()
-#     print(f"[out] Saved figure to {fig_path}")
-
-
-# # -----------------------------
-# # Main
-# # -----------------------------
-# def main():
-#     ensure_dirs()
-
-#     # 1) Load training set -> boolean array (subset) with caching
-#     X = load_training_array()
-
-#     # 2) Fit (or load) TSNE model
-#     embedding_train, _ = fit_tsne_model(X) # _ catches the coordinates
-
-#     # 3) Load target dataset fingerprints (bool) with caching
-#     target_space_fingerprints = load_target_space()
-
-#     # 4) Transform target fingerprints into TSNE space (cache npy + csv)
-#     _, target_chemicals_space = transform_target(embedding_train, target_space_fingerprints)
-
-#     # 5) Plot and save figure (skip if already there)
-#     plot_embedding(target_chemicals_space)
-
-
-# if __name__ == "__main__":
-#     main()
