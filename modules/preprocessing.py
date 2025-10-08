@@ -1,7 +1,10 @@
 import os
+import time
 import pickle
 import numpy as np
 import pandas as pd
+from pathlib import Path
+import pubchempy as pcp
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 from rdkit.Chem import rdFingerprintGenerator
@@ -9,36 +12,11 @@ from rdkit.Chem.MolStandardize import rdMolStandardize
 import pubchempy as pcp
 import time
 
-
-
 # -----------------------------
 # Data and model loading
 # -----------------------------
 
-def load_training_array(filename, use_subset=False, subset_n=6000):
-
-    """
-    Loads the von Borries training fingerprints, converts to boolean,
-    optionally subsets, and caches the boolean array.
-
-    """
-    # load fingerprints
-    fingerprints_file = os.path.join("..", "temp", filename + '_fingerprints.csv')
-    fingerprints = pd.read_csv(fingerprints_file)
-
-    # ensure that there is not NA in the data
-    assert fingerprints.isna().sum().sum() == 0, "There are NaNs in the data"
-    print("Loaded fingerprints data size:", fingerprints.shape)
-
-    # obtain training data
-     # full data
-    fingerprints = fingerprints[:subset_n] if use_subset else fingerprints
-    inchikeys = fingerprints['INCHIKEY']
-    fingerprints.drop('INCHIKEY', axis=1, inplace=True)
-    X = np.array(fingerprints).astype('bool')
-    print("Size of training array:", X.size)
-
-    return X, inchikeys
+PROJECT_ROOT = Path(__file__).resolve().parent.parent 
 
 def preprocess_data(folder, filename):
     """
@@ -46,15 +24,12 @@ def preprocess_data(folder, filename):
     :param filename: name tag
     :return: pandas DataFrame of fingerprints
     """
-    input_df_path = os.path.join("..", "data", folder, filename + ".csv")
+    input_df_path = os.path.join(PROJECT_ROOT, "data", folder, "input_" + filename + ".csv")
     df = pd.read_csv(input_df_path)
     df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
-    df_fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES'))
-    if 'INCHIKEY' in df.columns:
-        df_fingerprints['INCHIKEY'] = df['INCHIKEY']
-    else:
-        df_fingerprints['INCHIKEY'] = get_inchikeys(df['standardized SMILES'])
-
+    fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', **kwargs))
+    df_fingerprints = pd.concat([df["INCHIKEY"], fingerprints], axis=1)
+    
     return df_fingerprints
 
 def save_fingerprints(fingerprints, filename):
@@ -63,8 +38,11 @@ def save_fingerprints(fingerprints, filename):
     :param fingerprints: fingerprints dataframe
     :param filename: name tag
     """
-    fingerprints_df_path = os.path.join("..", "temp", filename + "_fingerprints.csv")
-    fingerprints.to_csv(fingerprints_df_path)
+    out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
+    os.makedirs(out_dir, exist_ok=True)
+
+    fingerprints_df_path = os.path.join(out_dir, filename + "_fingerprints.csv")
+    fingerprints.to_csv(fingerprints_df_path, index=False)
     print("Fingerprints saved to ", fingerprints_df_path)
 
 
@@ -74,7 +52,7 @@ def load_fingerprints(filename):
     :param filename:
     :return:
     """
-    fingerprints_df_path = os.path.join("..", "temp", filename + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", filename + "_fingerprints.csv")
     fingerprints = pd.read_csv(fingerprints_df_path)
     return fingerprints
 
@@ -83,7 +61,7 @@ def load_fingerprints(filename):
 # -----------------------------
 
 
-def get_pubchem_data(df, col_inchikey, col_cas, col_name, output_file, resume=False):
+def get_pubchem_data(df, col_inchikey, col_cas, col_name, output_file, resume=True):
     """ Fetches IUPAC name, SMILES, and InChI strings from PubChem for a list of chemicals 
     provided in dataframe with their InChIKeys, CAS numbers and chemical names, saving regularly to avoid data loss.
     Allows to resume from last saved compound.
@@ -399,10 +377,14 @@ def calculate_descriptors_morgan(smiles, **kwargs):
     """
 
     mol = myMolFromSmiles(smiles)
+    
     gen = rdFingerprintGenerator.GetMorganGenerator(**kwargs)
     fp = gen.GetFingerprint(mol)
-    arr = np.zeros((fp.GetNumBits(),), dtype=bool)
+    arr = np.zeros((fp.GetNumBits(),), dtype=float)
     DataStructs.ConvertToNumpyArray(fp, arr)
+
+    if (smiles=="") or (mol is None):
+        arr[:] = np.nan
 
     return arr
 
