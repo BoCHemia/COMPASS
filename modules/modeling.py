@@ -5,9 +5,8 @@ import pandas as pd
 from openTSNE.sklearn import TSNE
 import matplotlib.pyplot as plt
 import seaborn as sns
-from zipfile import ZipFile
 from modules.preprocessing import *
-from zipfile import ZipFile
+import zipfile
 import yaml
 
 ### Some comments:
@@ -49,6 +48,18 @@ def load_pickle(path):
     """
     with open(path, "rb") as f:
         return pickle.load(f)
+
+def unzip_and_load_pkl(path_to_zipfile):
+    """
+    Unzip and unpickle a zip file to load a tSNE  model
+    :param path_to_zipfile: Path to zip file
+    :return: tSNE model objcet
+    """
+    archive = zipfile.ZipFile(path_to_zipfile, 'r')
+    model_name_pkl = archive.infolist()[0]
+    model_pkl = archive.read(model_name_pkl)
+    model = pickle.loads(model_pkl)
+    return model
     
 def load_configs(params = 'tsne_params'):
     """
@@ -89,26 +100,30 @@ def fit_tsne_model(df_fingerprints):
     print('Finished training')
     return tsne, coordinates
 
-def save_model(model, filename):
+def save_model(model, filename, pickle=True, zip=True):
     """
     Save model as pickle to temp and as zipped pickle to output
     @param model: trained tSNE model
     @param filename: name tag of the original data file (e.g. for 'data_market.csv' the filename would be 'data_market')
+    @param pickle: save as pickle file, True by default
+    @param zip: compress to zip file, True by default
     """
     ensure_dirs()
     model_path = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
     model_path_zip = os.path.join(PROJECT_ROOT, "output", filename + '_trained_tSNE.zip')
 
     # Saving trained tSNE object to temp folder
-    print("--> Pickle tSNE object")
-    save_pickle(model, model_path)
-    print(f"Saved fitted tSNE embedding to {model_path}")
+    if pickle:
+        print("--> Pickle tSNE object")
+        save_pickle(model, model_path)
+        print(f"Saved fitted tSNE embedding to {model_path}")
 
     # Saving zipped trained tSNE object to output folder
-    print('--> Zip tSNE object')
-    with ZipFile(model_path_zip, "w") as zipf:
-        zipf.write(model_path)
-    print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
+    if zip:
+        print('--> Zip tSNE object')
+        with zipfile.ZipFile(model_path_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
+            zipf.write(model_path)
+        print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
 
 def save_coordinates(coordinates, filename):
     """
@@ -145,8 +160,7 @@ def load_model(filename, from_zip = False):
     if from_zip:
         model_path_zip = os.path.join(PROJECT_ROOT, "output", filename + '_trained_tSNE.zip')
         model_name = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
-        archive = ZipFile(model_path_zip, 'r')
-        model = archive.read(model_name) # todo: this does not work - it says it's a possible zip bomb (:
+        model = unzip_and_load_pkl(model_path_zip)
     else:
         model_path = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
         model = load_pickle(model_path)
