@@ -7,7 +7,7 @@ temp/*
 .vscode
 modules/__pycache__/
 ZeroPMDB/
-data/models/*
+models/*
 __pycache__
 
 # Ignore all zip
@@ -23,4 +23,4 @@ __pycache__
 
 # Temporarily ignore Coconut folder content
 data/COCONUT/*
-data/PFAS/pfas_envipath.csv
+data/input/pfas_envipath.csv
