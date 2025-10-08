@@ -103,14 +103,14 @@ def fit_tsne_model(df_fingerprints):
 def save_model(model, filename, pickle=True, zip=True):
     """
     Save model as pickle to temp and as zipped pickle to output
-    @param model: trained tSNE model
-    @param filename: name tag of the original data file (e.g. for 'data_market.csv' the filename would be 'data_market')
-    @param pickle: save as pickle file, True by default
-    @param zip: compress to zip file, True by default
+    :param model: trained tSNE model
+    :param filename: name tag of the original data file (e.g. for 'data_market.csv' the filename would be 'data_market')
+    :param pickle: save as pickle file, True by default
+    :param zip: compress to zip file, True by default
     """
     ensure_dirs()
     model_path = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
-    model_path_zip = os.path.join(PROJECT_ROOT, "output", filename + '_trained_tSNE.zip')
+    model_path_zip = os.path.join(PROJECT_ROOT, "models", filename + '_trained_tSNE.zip')
 
     # Saving trained tSNE object to temp folder
     if pickle:
@@ -125,28 +125,26 @@ def save_model(model, filename, pickle=True, zip=True):
             zipf.write(model_path)
         print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
 
-def save_coordinates(coordinates, filename):
+def save_coordinates(coordinates, foldername, filename):
     """
-    Save coordinates to csv file with the columns TSNE1 and TSNE2
-
-     #todo: check for consistency - ideally we would alsways get the same output here for visualization
+    Save coordinates to output file in data folder (data/[foldername]/output_[filename].csv)
 
     :param coordinates: coordinates as received from model fitting with index as InChIKey
+    :param foldername: folder name for saving the input file annotated with TSNE coordinates
     :param filename: name tag of the original data file (e.g. for 'data_market.csv')
     """
-    coordinates_path = os.path.join(PROJECT_ROOT, "temp", filename + '_coordinates_tSNE.csv')
-    coordinates.to_csv(coordinates_path, index=True)
-
-    input_df_path = os.path.join(PROJECT_ROOT, "data", filename, "input_" + filename + ".csv")
+    # load input df
+    input_df_path = os.path.join(PROJECT_ROOT, "data", foldername, "input_" + filename + ".csv")
     df = pd.read_csv(input_df_path)
     df_coordinates = df.merge(coordinates, on='INCHIKEY', how='left')
 
-    output_path = os.path.join(PROJECT_ROOT, "data", filename, "output_" + filename + '.csv')
+    # save df, annotated with TSNE coordinates
+    output_path = os.path.join(PROJECT_ROOT, "data", foldername, "output_" + filename + '.csv')
     df_coordinates.to_csv(output_path, index=True)
 
     
-def load_coordinates(filename):
-    coordinates_path = os.path.join(PROJECT_ROOT, "temp", filename + '_coordinates_tSNE.csv')
+def load_coordinates(foldername, filename):
+    coordinates_path = os.path.join(PROJECT_ROOT, "data", foldername, "output_" + filename + '.csv')
     coordinates = pd.read_csv(coordinates_path)
     return coordinates
 
@@ -158,8 +156,7 @@ def load_model(filename, from_zip = False):
     :return: model object
     """
     if from_zip:
-        model_path_zip = os.path.join(PROJECT_ROOT, "output", filename + '_trained_tSNE.zip')
-        model_name = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
+        model_path_zip = os.path.join(PROJECT_ROOT, "models", filename + '_trained_tSNE.zip')
         model = unzip_and_load_pkl(model_path_zip)
     else:
         model_path = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
@@ -205,7 +202,11 @@ def transform_target(embedding_train,           # todo: code from José - I simp
     print(target_chemicals_space)
     return embedding_target_chemicals, target_chemicals_space
 
-def transform_target(model, target_X):
-    coordinates_target = model.transform(target_X)
+def transform_target(model, fingerprints):
+    # Prepare boolean fingerprint array
+    fingerprints.dropna(inplace=True)
+    X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+    coordinates_target = model.transform(X)
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
+    coordinates_df.index = fingerprints['INCHIKEY']
     return coordinates_df

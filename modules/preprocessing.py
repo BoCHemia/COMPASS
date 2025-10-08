@@ -12,25 +12,50 @@ from rdkit.Chem.MolStandardize import rdMolStandardize
 import pubchempy as pcp
 import time
 
+# set project root
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # -----------------------------
 # Data and model loading
 # -----------------------------
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent 
-
-def preprocess_data(folder, filename):
+def preprocess_data(folder, filename, **kwargs):
     """
     Wrapper function to load dataframe, standardize SMILES, and calculate fingerprints
     :param filename: name tag
     :return: pandas DataFrame of fingerprints
     """
+    print("Preprocessing data ...")
     input_df_path = os.path.join(PROJECT_ROOT, "data", folder, "input_" + filename + ".csv")
     df = pd.read_csv(input_df_path)
-    df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
+    df = standardize_structures(df) # add standardizes SMILES and INCHIKEY columns
     fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', **kwargs))
     df_fingerprints = pd.concat([df["INCHIKEY"], fingerprints], axis=1)
-    
+    print("Data preprocessed (standardized SMILES, INCHIKEY) and fingerprints calculated.")
     return df_fingerprints
+
+def standardize_structures(df):
+    if not 'standardized SMILES' in df.columns:
+        df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
+    if not "INCHIKEY" in df.columns:
+        df['INCHIKEY'] = get_inchikeys(df['standardized SMILES'])
+    return df
+
+def load_input_file(filename, foldername="input"):
+    """
+    Load raw input file for mapping to reference space
+    :param filename: name tag
+    :param foldername: "input" by default
+    """
+    print("Loading input file...")
+    raw_input_path = os.path.join(PROJECT_ROOT, "data", foldername, filename + ".csv")
+    df = pd.read_csv(raw_input_path)
+    assert 'SMILES' in df.columns, f"PROBLEM: missing SMILES column in input file under {raw_input_path}"
+    df = standardize_structures(df)
+    # save curated input_ file
+    input_df_path = os.path.join(PROJECT_ROOT, "data", foldername, "input_" + filename + ".csv")
+    df.to_csv(input_df_path)
+    print("Input file loaded and annotated with standardized SMILES and INCHIKEYS")
 
 def save_fingerprints(fingerprints, filename):
     """
@@ -271,7 +296,6 @@ def remove_stereochemistry(smiles):
         SMILES string without stereochemical information
 
     """
-
     mol = myMolFromSmiles(smiles)
 
     if mol is None:
