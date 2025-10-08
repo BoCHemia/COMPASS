@@ -6,6 +6,8 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.MolStandardize import rdMolStandardize
+import pubchempy as pcp
+import time
 
 
 
@@ -38,17 +40,21 @@ def load_training_array(filename, use_subset=False, subset_n=6000):
 
     return X, inchikeys
 
-def preprocess_data(filename):
+def preprocess_data(folder, filename):
     """
     Wrapper function to load dataframe, standardize SMILES, and calculate fingerprints
     :param filename: name tag
     :return: pandas DataFrame of fingerprints
     """
-    input_df_path = os.path.join("..", "data", "input", filename + ".csv")
+    input_df_path = os.path.join("..", "data", folder, filename + ".csv")
     df = pd.read_csv(input_df_path)
     df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
     df_fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES'))
-    df_fingerprints['INCHIKEY'] = df['INCHIKEY']
+    if 'INCHIKEY' in df.columns:
+        df_fingerprints['INCHIKEY'] = df['INCHIKEY']
+    else:
+        df_fingerprints['INCHIKEY'] = get_inchikeys(df['standardized SMILES'])
+
     return df_fingerprints
 
 def save_fingerprints(fingerprints, filename):
@@ -60,6 +66,7 @@ def save_fingerprints(fingerprints, filename):
     fingerprints_df_path = os.path.join("..", "temp", filename + "_fingerprints.csv")
     fingerprints.to_csv(fingerprints_df_path)
     print("Fingerprints saved to ", fingerprints_df_path)
+
 
 def load_fingerprints(filename):
     """
@@ -166,6 +173,79 @@ def get_pubchem_data(df, col_inchikey, col_cas, col_name, output_file, resume=Fa
 
     return df_out
 
+def get_pubchem_data(df, col_inchikey, output_file, resume=False):
+    """ Fetches IUPAC nam  from PubChem for a list of chemicals
+    provided in dataframe with their InChIKeys, saving regularly to avoid data loss.
+    Allows to resume from last saved compound.
+
+    Inputs
+    ----------
+    df : pandas dataframe, mandatory
+        Dataframe containing a list of chemicals with columns for CAS numbers and chemical names
+    col_inchikey: str, mandatory
+        column name containing InChI keys
+    output_file: str, mandatory
+        path to output csv file
+    resume: bool, optional, default=False
+        if True and output_file exists, resume from last saved compound
+
+    Outputs
+    ----------
+    df_out: pandas dataframe
+        dataframe with CAS, chemical name, foundby (CAS or name), PubChem ID (CID), IUPAC name, synonym
+    """
+
+    if resume & os.path.exists(output_file):
+        df_out = pd.read_csv(output_file)
+        done_set = set(df_out[col_inchikey])
+        print(f"Resuming: {len(done_set)} compounds already processed.")
+    else:
+        df_out = pd.DataFrame(columns=[col_inchikey, 'CID', 'IUPAC', 'PREFERRED_NAME'])
+        done_set = set()
+
+
+    for i, inchikey in enumerate(df[col_inchikey]):
+
+        if inchikey in done_set:
+            continue
+
+        compound_data = None
+
+        try:
+            results = pcp.get_compounds(inchikey, 'inchikey')
+            if results:
+                compound_data = results[0]
+        except:
+            pass
+
+        if compound_data:
+            # get common name from synonyms
+            if len(compound_data.synonyms)>0:
+                compound_name = compound_data.synonyms[0] # assuming the first synonym is the best
+            else:
+                compound_name = compound_data.iupac_name
+
+            row = pd.DataFrame([[inchikey,
+                                compound_data.cid,
+                                compound_data.iupac_name,
+                                compound_name
+                                ]],
+                            columns=df_out.columns)
+        else:
+            row = pd.DataFrame([[inchikey, None, None, None]],
+                            columns=df_out.columns)
+
+        df_out = pd.concat([df_out, row], ignore_index=True)
+
+        if i % 50 == 0:
+            df_out.to_csv(output_file, index=False)
+            print(f"Progress saved at index {i} ({inchikey})")
+
+        time.sleep(0.2)
+
+    df_out.to_csv(output_file, index=False)
+
+    return df_out
 
 def myMolFromSmiles(smiles):
     """ Function to create mol object from SMILES performing partial sanitization when necessary
@@ -346,3 +426,12 @@ def calculate_descriptors_morgan_df(df, col_smiles, **kwargs):
 
     d = df[col_smiles].apply(calculate_descriptors_morgan, **kwargs)
     return pd.DataFrame.from_records(d)
+
+def get_inchikeys(smiles_list):
+    #todo: add doc/error handling
+    output_list = []
+    for smiles in smiles_list:
+        mol = Chem.MolFromSmiles(smiles)
+        inchikey = Chem.MolToInchiKey(mol)
+        output_list.append(inchikey)
+    return output_list

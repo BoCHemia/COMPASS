@@ -24,6 +24,7 @@ training_array, inchikeys = load_training_array(input_data_name) # full set
 trained_model, coordinates = fit_tsne_model(training_array)
 # trained_model = load_model(input_data_name)
 save_model(trained_model, input_data_name)
-save_coordinates(coordinates, input_data_name, inchikeys)
+save_coordinates(coordinates, input_data_name)
 
-
+# add to data
+# reference space : input + tSNE coordinates

@@ -130,7 +130,6 @@ def save_coordinates(coordinates, filename, inchikeys = None):
     :param inchikeys: optional - list of inchikeys, for example from original data file
     """
     coordinates_path = os.path.join("..", "temp", filename + '_coordinates_tSNE.csv')
-    # coordinates.columns = ['TSNE1', 'TSNE2']
     if inchikeys is not None:
         coordinates.index = inchikeys
     coordinates.to_csv(coordinates_path, index=True)
