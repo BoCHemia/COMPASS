@@ -19,4 +19,8 @@ __pycache__
 *.jpeg
 
 # Temporarily ignore fingerprints
-# data/fingerprints/* 
+# data/fingerprints/*
+
+# Temporarily ignore Coconut folder content
+data/COCONUT/*
+data/PFAS/pfas_envipath.csv
