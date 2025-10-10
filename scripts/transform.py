@@ -6,7 +6,7 @@ reference_data_name = "pfas_nist"
 model = load_model(reference_data_name, from_zip=False)
 
 # load data to plot
-new_data_name = 'pfas_envipath'
+new_data_name = 'pfas_envipath' # enter here the name of the input data set to transform
 folder_name = 'input'
 load_input_file(new_data_name)
 new_fingerprints = preprocess_data(folder=folder_name, filename=new_data_name)
