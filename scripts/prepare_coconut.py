@@ -39,6 +39,7 @@ print(df_structures.describe())
 
 output_file = os.path.join(temp_path, f"{name_tag}_pubchem.csv")
 # df_structures = df_structures[:50]
+# Warning: Coconut has >400K substances, hence this part takes ~10 days to run
 df_pubchem = get_pubchem_data(df_structures, col_inchikey='INCHIKEY', output_file=output_file, resume=True)
 
 
@@ -50,4 +51,4 @@ df_out = df_structures.merge(df_pubchem[["CID", "IUPAC", "INCHIKEY", "PREFERRED_
 df_structures.drop(columns=["coconut_id", "molecular_formula", "inchi", "coconut_id.1"], inplace=True)
 df_structures.fillna({'SMILES': ''}, inplace=True)
 df_structures.to_csv(os.path.join(input_path, f"input_{name_tag}.csv"), index=False)
-print("Shape of PFAS dataframe:", df_structures.shape)
+print("Shape of COCONUT dataframe:", df_structures.shape)

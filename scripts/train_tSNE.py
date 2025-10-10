@@ -6,8 +6,8 @@ import sys
 sys.stdout.reconfigure(line_buffering=True)
 
 #### input ####
-input_folder_name = "PFAS"
-input_data_name = "pfas_nist" # file "data_market.csv" should be saved under "data"
+input_folder_name = "ZeroPM"
+input_data_name = "zeropm" # file "data_market.csv" should be saved under "data/market"
 
 #### preprocessing and calculating fingerprints ####
 df_fingerprints = preprocess_data(input_folder_name, input_data_name, radius=2, fpSize=1024)
