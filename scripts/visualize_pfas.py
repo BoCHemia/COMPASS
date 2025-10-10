@@ -15,17 +15,14 @@ new_coordinates = load_coordinates(foldername=input_folder, filename=input_file)
 input_file_2 = 'pfas_market_inventory'
 new_coordinates_2 = load_coordinates(foldername=input_folder, filename=input_file_2)
 
-# plots
-# figure = chemical_space_plot(reference_coordinates, hue_column=None, color_map=None, hover_data=['INCHIKEY', 'SMILES'])
-# save_figure(figure, input_file)
-# quit()
 
 figure = chemical_space_plot_grey(reference_coordinates, hover_data=['INCHIKEY', 'SMILES'], opacity=0.5)
 figure = map_input_data(figure, new_coordinates_2, nametag=input_file_2,
                         hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'CAS', 'Synonyms'])
-# figure = map_input_data(figure, new_coordinates, nametag=input_file,
-#                         hover_name='SMILES', hover_data=['INCHIKEY'],
-#                         color='SIZE')
+figure = map_input_data(figure, new_coordinates, nametag=input_file,
+                        hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'SMILES'],
+                        column_for_color_map='SIZE', color_type='continuous', palette='Bluered',
+                        opacity=1, size=5)
 figure.show()
-save_figure(figure, input_file)
-# chemical_space_plot(new_coordinates)
+output_filename = f'{reference_file}_{input_file}'
+save_figure(figure, output_filename)
