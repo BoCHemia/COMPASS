@@ -177,7 +177,7 @@ def get_pubchem_data(df, col_inchikey, col_cas, col_name, output_file, resume=Tr
     return df_out
 
 def get_pubchem_data(df, col_inchikey, output_file, resume=False):
-    """ Fetches IUPAC nam  from PubChem for a list of chemicals
+    """ Fetches IUPAC names, names, and CID from PubChem for a list of chemicals
     provided in dataframe with their InChIKeys, saving regularly to avoid data loss.
     Allows to resume from last saved compound.
 
