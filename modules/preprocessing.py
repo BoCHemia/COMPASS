@@ -77,7 +77,7 @@ def load_fingerprints(filename):
     :param filename:
     :return:
     """
-    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", filename + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", "fingerprints", filename + "_fingerprints.csv")
     fingerprints = pd.read_csv(fingerprints_df_path)
     return fingerprints
 
