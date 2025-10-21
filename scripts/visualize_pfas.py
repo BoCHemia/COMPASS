@@ -46,7 +46,6 @@ new_coordinates_2 = load_coordinates(foldername=input_folder, filename=input_fil
 figure = chemical_space_plot_grey(reference_coordinates, hover_data=['INCHIKEY', 'SMILES'], opacity=0.5)
 figure = map_input_data(figure, new_coordinates_2, nametag=input_file_2,
                         hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'CAS', 'Synonyms'])
-
 figure.show()
 output_filename = f'{reference_file}_{input_file_2}'
 save_figure(figure, output_filename)

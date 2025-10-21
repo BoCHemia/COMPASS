@@ -202,4 +202,4 @@ def save_figure(fig, filename, format='.png'):
     fig.write_image(output_path_static)
     fig.write_html(output_path_html)
     print('Static figure saved to {}'.format(output_path_static))
-    print('Static figure saved to {}'.format(output_path_html))
+    print('Interactive figure saved to {}'.format(output_path_html))

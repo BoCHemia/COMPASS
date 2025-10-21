@@ -296,6 +296,7 @@ def remove_stereochemistry(smiles):
         SMILES string without stereochemical information
 
     """
+
     mol = myMolFromSmiles(smiles)
 
     if mol is None:
@@ -401,7 +402,7 @@ def calculate_descriptors_morgan(smiles, **kwargs):
     """
 
     mol = myMolFromSmiles(smiles)
-    
+
     gen = rdFingerprintGenerator.GetMorganGenerator(**kwargs)
     fp = gen.GetFingerprint(mol)
     arr = np.zeros((fp.GetNumBits(),), dtype=float)
