@@ -125,7 +125,7 @@ def save_model(model, filename, pickle=True, zip=True):
             zipf.write(model_path)
         print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
 
-def save_coordinates(coordinates, foldername, filename):
+def save_coordinates(coordinates, foldername, filename, reference_data=""):
     """
     Save coordinates to output file in data folder (data/[foldername]/output_[filename].csv)
 
@@ -138,14 +138,20 @@ def save_coordinates(coordinates, foldername, filename):
     df = pd.read_csv(input_df_path)
     df_coordinates = df.merge(coordinates, on='INCHIKEY', how='left')
 
+    if reference_data:
+        filename += "_on_" + reference_data
     # save df, annotated with TSNE coordinates
     output_path = os.path.join(PROJECT_ROOT, "data", foldername, "output_" + filename + '.csv')
     df_coordinates.to_csv(output_path, index=True)
+    print(f"Saved coordinates to {output_path}")
 
     
-def load_coordinates(foldername, filename):
+def load_coordinates(foldername, filename, reference_data=""):
+    if reference_data:
+        filename += f'_on_{reference_data}'
     coordinates_path = os.path.join(PROJECT_ROOT, "data", foldername, "output_" + filename + '.csv')
     coordinates = pd.read_csv(coordinates_path)
+    print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
 def load_model(filename, from_zip = False):

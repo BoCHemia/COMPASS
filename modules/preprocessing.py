@@ -77,7 +77,7 @@ def load_fingerprints(filename):
     :param filename:
     :return:
     """
-    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", filename + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", "fingerprints", filename + "_fingerprints.csv")
     fingerprints = pd.read_csv(fingerprints_df_path)
     return fingerprints
 
@@ -177,7 +177,7 @@ def get_pubchem_data(df, col_inchikey, col_cas, col_name, output_file, resume=Tr
     return df_out
 
 def get_pubchem_data(df, col_inchikey, output_file, resume=False):
-    """ Fetches IUPAC nam  from PubChem for a list of chemicals
+    """ Fetches IUPAC names, names, and CID from PubChem for a list of chemicals
     provided in dataframe with their InChIKeys, saving regularly to avoid data loss.
     Allows to resume from last saved compound.
 
@@ -296,6 +296,7 @@ def remove_stereochemistry(smiles):
         SMILES string without stereochemical information
 
     """
+
     mol = myMolFromSmiles(smiles)
 
     if mol is None:
@@ -401,7 +402,7 @@ def calculate_descriptors_morgan(smiles, **kwargs):
     """
 
     mol = myMolFromSmiles(smiles)
-    
+
     gen = rdFingerprintGenerator.GetMorganGenerator(**kwargs)
     fp = gen.GetFingerprint(mol)
     arr = np.zeros((fp.GetNumBits(),), dtype=float)

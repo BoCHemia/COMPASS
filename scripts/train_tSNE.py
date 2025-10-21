@@ -1,3 +1,6 @@
+import pandas as pd
+import numpy as np
+import os
 from modules.modeling import *
 from modules.preprocessing import *
 
@@ -6,13 +9,17 @@ import sys
 sys.stdout.reconfigure(line_buffering=True)
 
 #### input ####
-input_folder_name = "PFAS"
-input_data_name = "pfas_nist" # file "data_market.csv" should be saved under "data"
+# input_folder_name = "COCONUT"
+# input_data_name = "coconut" # file "data_market.csv" should be saved under "data/market"
+input_folder_name = "ZeroPM"
+input_data_name = "zeropm"
 
 #### preprocessing and calculating fingerprints ####
 df_fingerprints = preprocess_data(input_folder_name, input_data_name, radius=2, fpSize=1024)
 save_fingerprints(df_fingerprints, input_data_name)
 
+#### load training_array from fingerprints file ####
+# --> can be used if fingerprints are already calculated and available in output folder
 # df_fingerprints = load_fingerprints(filename=input_data_name) # --> can be used if fingerprints are already calculated and available in temp folder
 
 #### train model ####
