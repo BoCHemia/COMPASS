@@ -11,7 +11,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # The data was downloaded from https://zenodo.org/records/5336447 on 1/10/2025
 # Citation: Sorokina and Steinbeck J Cheminform (2020), https://doi.org/10.1186/s13321-020-00424-9
 # The downloaded file COCONUT4MetFrag_april.csv was renamed to raw_coconut.csv
-# Training a model based on all coconut data takes ~150 mins
 
 input_path = os.path.join(PROJECT_ROOT, "data", "COCONUT")
 output_path = os.path.join(PROJECT_ROOT, "output")
@@ -49,11 +48,7 @@ df_pubchem = get_pubchem_data(df_structures, col_inchikey='INCHIKEY', output_fil
 # -----------------------------
 # Minimal requirements: PREFERRED_NAME,INCHIKEY,SMILES
 df_out = df_structures.merge(df_pubchem[["CID", "IUPAC", "INCHIKEY", "PREFERRED_NAME"]], on="INCHIKEY", how="left")
-df_out.drop(columns=["coconut_id", "molecular_formula", "inchi", "coconut_id.1"], inplace=True)
-df_out.fillna({'SMILES': ''}, inplace=True)
-df_out.to_csv(os.path.join(input_path, f"input_{name_tag}.csv"), index=False)
+df_structures.drop(columns=["coconut_id", "molecular_formula", "inchi", "coconut_id.1"], inplace=True)
+df_structures.fillna({'SMILES': ''}, inplace=True)
+df_structures.to_csv(os.path.join(input_path, f"input_{name_tag}.csv"), index=False)
 print("Shape of COCONUT dataframe:", df_structures.shape)
-
-# df_out = pd.read_csv(os.path.join(input_path, f"input_{name_tag}.csv")
-# df
-# print("Shape of COCONUT dataframe, only :", df_structures.shape)

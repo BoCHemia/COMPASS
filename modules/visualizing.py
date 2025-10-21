@@ -197,9 +197,6 @@ def map_input_data(fig, df, nametag = '',
 
 def save_figure(fig, filename, format='.png'):
     # todo: currently, the resolution of the exported figures is very low
-    output_path_static = os.path.join(PROJECT_ROOT, 'output', filename + format)
-    output_path_html = os.path.join(PROJECT_ROOT, 'output', filename + '.html')
-    fig.write_image(output_path_static)
-    fig.write_html(output_path_html)
-    print('Static figure saved to {}'.format(output_path_static))
-    print('Static figure saved to {}'.format(output_path_html))
+    output_path = os.path.join(PROJECT_ROOT, 'output', filename + format)
+    fig.write_image(output_path)
+    print('Figure saved to {}'.format(output_path))
