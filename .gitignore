@@ -6,7 +6,6 @@ temp/*
 *.npy
 .vscode
 modules/__pycache__/
-ZeroPMDB/
 models/*
 __pycache__
 
@@ -21,6 +20,7 @@ __pycache__
 # Temporarily ignore fingerprints
 # data/fingerprints/*
 
-# Temporarily ignore Coconut folder content
+# Temporarily ignore DB folder content
+data/ZeroPM/*
 data/COCONUT/*
 data/input/pfas_envipath.csv

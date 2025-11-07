@@ -12,13 +12,8 @@ input_folder = 'input'
 input_file = 'pfas_envipath'
 new_coordinates = load_coordinates(foldername=input_folder, filename=input_file, reference_data=reference_file)
 
-# load input coordinates, to be mapped to reference
-input_file_2 = 'pfas_market_inventory'
-new_coordinates_2 = load_coordinates(foldername=input_folder, filename=input_file_2, reference_data=reference_file)
-
-
 figure = chemical_space_plot_grey(reference_coordinates, hover_data=['INCHIKEY', 'SMILES'], opacity=0.8)
-figure = map_input_data(figure, new_coordinates_2, nametag=input_file_2,
+figure = map_input_data(figure, new_coordinates, nametag=input_file,
                         hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'CAS', 'Synonyms'], opacity=1)
 figure = map_input_data(figure, new_coordinates, nametag=input_file,
                         hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'SMILES'],
@@ -37,8 +32,6 @@ reference_coordinates = load_coordinates(reference_folder, reference_file)
 
 # load input coordinates, to be mapped to reference
 input_folder = 'input'
-
-# load input coordinates, to be mapped to reference
 input_file_2 = 'pfas_market_inventory'
 new_coordinates_2 = load_coordinates(foldername=input_folder, filename=input_file_2, reference_data=reference_file)
 

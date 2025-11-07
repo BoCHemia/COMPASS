@@ -9,10 +9,8 @@ import sys
 sys.stdout.reconfigure(line_buffering=True)
 
 #### input ####
-# input_folder_name = "COCONUT"
-# input_data_name = "coconut" # file "data_market.csv" should be saved under "data/market"
-input_folder_name = "ZeroPM"
-input_data_name = "zeropm"
+input_folder_name = "drugbank_5.1.13"
+input_data_name = "drugbank"
 
 #### preprocessing and calculating fingerprints ####
 df_fingerprints = preprocess_data(input_folder_name, input_data_name, radius=2, fpSize=1024)
@@ -26,5 +24,5 @@ save_fingerprints(df_fingerprints, input_data_name)
 trained_model, coordinates = fit_tsne_model(df_fingerprints=df_fingerprints)
 # trained_model = load_model(filename=input_data_name)
 # coordinates = load_coordinates(foldername=input_folder_name, filename=input_data_name)
-save_model(model=trained_model, filename=input_data_name)
-save_coordinates(coordinates=coordinates, foldername=input_folder_name, filename=input_data_name)
+save_model(model=trained_model, file_name=input_data_name, zip=False)
+save_coordinates(coordinates=coordinates, foldername=input_folder_name, file_name=input_data_name)

@@ -18,20 +18,17 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # The downloaded file PubChem_compound_cache_46RGTSiBTT16E8UKR3KMLFXwgJC3R6Z-3Fu9MsdKrzPHU5M.csv was renamed to raw_zeropm.csv
 # Citation: to be added
 
-input_path = os.path.join(PROJECT_ROOT, "data", "ZeroPM")
-output_path = os.path.join(PROJECT_ROOT, "output")
-temp_path = os.path.join(PROJECT_ROOT, "temp")
+input_path = os.path.join(PROJECT_ROOT, "data")
 
-name_tag = "zeropm"
-
-input_file_name = f"raw_{name_tag}.csv"
+folder_name = "ZeroPM"
+file_name = "zeropm"
 
 
 # -----------------------------
 # PREPROCESSING
 # -----------------------------
 
-df = pd.read_csv(os.path.join(input_path, input_file_name))
+df = pd.read_csv(os.path.join(input_path, folder_name, f"raw_{file_name}.csv"))
 df_structures = df.dropna(subset=["SMILES"]).reset_index(drop=True) # should not remove anything
 print(df_structures.describe())
 
@@ -46,5 +43,5 @@ df_structures = df_structures.rename(columns = {"Name": "PREFERRED_NAME",
                                                 "InChI": "INCHI_STRING",
                                                 })
 df_out = df_structures[["PREFERRED_NAME", "IUPAC", "INCHIKEY", "SMILES", "Molecular_Formula", "INCHI_STRING"]]
-df_structures.to_csv(os.path.join(input_path, f"input_{name_tag}.csv"), index=False)
+df_structures.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
 print("Shape of ZeroPM dataframe:", df_structures.shape)

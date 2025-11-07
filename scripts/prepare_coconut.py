@@ -13,35 +13,33 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # The downloaded file COCONUT4MetFrag_april.csv was renamed to raw_coconut.csv
 # Training a model based on all coconut data takes ~150 mins
 
-input_path = os.path.join(PROJECT_ROOT, "data", "COCONUT")
+input_path = os.path.join(PROJECT_ROOT, "data")
 output_path = os.path.join(PROJECT_ROOT, "output")
 temp_path = os.path.join(PROJECT_ROOT, "temp")
 
-name_tag = "coconut"
-
-input_file_name = f"raw_{name_tag}.csv"
-
+folder_name = "COCONUT"
+file_name = "coconut"
 
 # -----------------------------
 # PREPROCESSING
 # -----------------------------
 
-df = pd.read_csv(os.path.join(input_path, input_file_name))
+df = pd.read_csv(os.path.join(input_path, folder_name, f"raw_{file_name}.csv"))
 df.rename(columns={"clean_smiles": "SMILES",
                    "inchikey": "INCHIKEY",
                    }, inplace=True)
 
 df_structures = df.dropna(subset=["SMILES"]).reset_index(drop=True) # should not remove anything
+# df_structures = df_structures[:50]
 print(df_structures.describe())
 
 # -----------------------------
 # GET PUBCHEM DATA
 # -----------------------------
 
-output_file = os.path.join(temp_path, f"{name_tag}_pubchem.csv")
-# df_structures = df_structures[:50]
+output_file = os.path.join(temp_path, f"{file_name}_pubchem.csv")
 # Warning: Coconut has >400K substances, hence this part takes ~10 days to run
-df_pubchem = get_pubchem_data(df_structures, col_inchikey='INCHIKEY', output_file=output_file, resume=True)
+df_pubchem = get_pubchem_data_inchi(df_structures, col_inchikey='INCHIKEY', output_file=output_file, resume=True)
 
 
 # -----------------------------
@@ -51,9 +49,9 @@ df_pubchem = get_pubchem_data(df_structures, col_inchikey='INCHIKEY', output_fil
 df_out = df_structures.merge(df_pubchem[["CID", "IUPAC", "INCHIKEY", "PREFERRED_NAME"]], on="INCHIKEY", how="left")
 df_out.drop(columns=["coconut_id", "molecular_formula", "inchi", "coconut_id.1"], inplace=True)
 df_out.fillna({'SMILES': ''}, inplace=True)
-df_out.to_csv(os.path.join(input_path, f"input_{name_tag}.csv"), index=False)
-print("Shape of COCONUT dataframe:", df_structures.shape)
+df_out.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
+print("Shape of COCONUT dataframe:", df_out.shape)
 
 # df_out = pd.read_csv(os.path.join(input_path, f"input_{name_tag}.csv")
 # df
-# print("Shape of COCONUT dataframe, only :", df_structures.shape)
+# print("Shape of COCONUT dataframe, only :", df_out.shape)

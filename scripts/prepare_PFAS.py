@@ -12,19 +12,17 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # More information on https://github.com/usnistgov/NISTPFAS/tree/main/suspectlist
 # The downloaded file was renamed to raw_pfas_nist.tsv
 
-input_path = os.path.join(PROJECT_ROOT, "data", "PFAS")
-output_path = os.path.join(PROJECT_ROOT, "output")
+input_path = os.path.join(PROJECT_ROOT, "data")
 
-name_tag = "pfas_nist"
-
-input_file_name = f"raw_{name_tag}.tsv"
+folder_name = "PFAS"
+file_name = "pfas_nist"
 
 
 # -----------------------------
 # PREPROCESSING
 # -----------------------------
 
-df = pd.read_csv(os.path.join(input_path, input_file_name), sep='\t')
+df = pd.read_csv(os.path.join(input_path, folder_name, f"raw_{file_name}.tsv"), sep='\t')
 df.rename(columns={"CHEMICAL_NAME": "PREFERRED_NAME",
                    }, inplace=True)
 df_structures = df.dropna(subset=["SMILES"]).reset_index(drop=True)
@@ -36,5 +34,5 @@ df_structures = df.dropna(subset=["SMILES"]).reset_index(drop=True)
 # Minimal requirements: PREFERRED_NAME,INCHIKEY,SMILES
 df_out = df_structures[["PREFERRED_NAME", "INCHIKEY", "SMILES"]]
 df_out.fillna({'SMILES': ''}, inplace=True)
-df_out.to_csv(os.path.join(input_path, f"input_{name_tag}.csv"), index=False)
+df_out.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
 print("Shape of PFAS dataframe:", df_out.shape)

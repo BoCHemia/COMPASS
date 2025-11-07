@@ -12,6 +12,7 @@ from rdkit.Chem.MolStandardize import rdMolStandardize
 import pubchempy as pcp
 import time
 
+
 # set project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -19,20 +20,22 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Data and model loading
 # -----------------------------
 
-def preprocess_data(folder, filename, **kwargs):
+def preprocess_data(df, radius=2, nBits=1024, **kwargs):
     """
-    Wrapper function to load dataframe, standardize SMILES, and calculate fingerprints
-    :param filename: name tag
+    Wrapper function to standardize SMILES, add InChIKeys and calculate fingerprints
+    :param df: input dataframe loaded with load_input_file() or provided as user input
+    :**kwargs: fingerprint calculation parameters in addition to radius and nBits (defaults provided)
     :return: pandas DataFrame of fingerprints
     """
     print("Preprocessing data ...")
-    input_df_path = os.path.join(PROJECT_ROOT, "data", folder, "input_" + filename + ".csv")
-    df = pd.read_csv(input_df_path)
-    df = standardize_structures(df) # add standardizes SMILES and INCHIKEY columns
-    fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', **kwargs))
+    df.fillna({'SMILES': ''}, inplace=True) # replace nan SMILES with empty strings
+    df = standardize_structures(df) # add standardized SMILES and INCHIKEY columns
+
+    fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=radius, nBits=nBits, **kwargs))
     df_fingerprints = pd.concat([df["INCHIKEY"], fingerprints], axis=1)
     print("Data preprocessed (standardized SMILES, INCHIKEY) and fingerprints calculated.")
     return df_fingerprints
+
 
 def standardize_structures(df):
     if not 'standardized SMILES' in df.columns:
@@ -41,43 +44,42 @@ def standardize_structures(df):
         df['INCHIKEY'] = get_inchikeys(df['standardized SMILES'])
     return df
 
-def load_input_file(filename, foldername="input"):
+
+def load_input_file(file_name, folder_name):
     """
-    Load raw input file for mapping to reference space
-    :param filename: name tag
-    :param foldername: "input" by default
+    Load input file for mapping to reference space
+    :param file_name: database name tag
+    :param folder_name: "input" database folder name
     """
     print("Loading input file...")
-    raw_input_path = os.path.join(PROJECT_ROOT, "data", foldername, filename + ".csv")
+    raw_input_path = os.path.join(PROJECT_ROOT, "data", folder_name, f"input_{file_name}.csv")
     df = pd.read_csv(raw_input_path)
     assert 'SMILES' in df.columns, f"PROBLEM: missing SMILES column in input file under {raw_input_path}"
-    df = standardize_structures(df)
-    # save curated input_ file
-    input_df_path = os.path.join(PROJECT_ROOT, "data", foldername, "input_" + filename + ".csv")
-    df.to_csv(input_df_path)
-    print("Input file loaded and annotated with standardized SMILES and INCHIKEYS")
 
-def save_fingerprints(fingerprints, filename):
+    return df
+
+
+def save_fingerprints(fingerprints, file_name):
     """
     Save fingerprints to .csv file
     :param fingerprints: fingerprints dataframe
-    :param filename: name tag
+    :param file_name: name tag
     """
     out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
     os.makedirs(out_dir, exist_ok=True)
 
-    fingerprints_df_path = os.path.join(out_dir, filename + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join(out_dir, file_name + "_fingerprints.csv")
     fingerprints.to_csv(fingerprints_df_path, index=False)
     print("Fingerprints saved to ", fingerprints_df_path)
 
 
-def load_fingerprints(filename):
+def load_fingerprints(file_name):
     """
 
-    :param filename:
+    :param file_name:
     :return:
     """
-    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", "fingerprints", filename + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", "fingerprints", file_name + "_fingerprints.csv")
     fingerprints = pd.read_csv(fingerprints_df_path)
     return fingerprints
 
@@ -176,9 +178,11 @@ def get_pubchem_data(df, col_inchikey, col_cas, col_name, output_file, resume=Tr
 
     return df_out
 
-def get_pubchem_data(df, col_inchikey, output_file, resume=False):
+
+# I renamed this function  with "_inchi" as it had the exact same name as the function above (Kerstin)
+def get_pubchem_data_inchi(df, col_inchikey, output_file, resume=False):
     """ Fetches IUPAC names, names, and CID from PubChem for a list of chemicals
-    provided in dataframe with their InChIKeys, saving regularly to avoid data loss.
+    provided in dataframe with ONLY their InChIKeys, saving regularly to avoid data loss.
     Allows to resume from last saved compound.
 
     Inputs
@@ -195,7 +199,7 @@ def get_pubchem_data(df, col_inchikey, output_file, resume=False):
     Outputs
     ----------
     df_out: pandas dataframe
-        dataframe with CAS, chemical name, foundby (CAS or name), PubChem ID (CID), IUPAC name, synonym
+        dataframe with CAS, chemical name,  PubChem ID (CID), IUPAC name, synonym
     """
 
     if resume & os.path.exists(output_file):
@@ -249,6 +253,7 @@ def get_pubchem_data(df, col_inchikey, output_file, resume=False):
     df_out.to_csv(output_file, index=False)
 
     return df_out
+
 
 def myMolFromSmiles(smiles):
     """ Function to create mol object from SMILES performing partial sanitization when necessary

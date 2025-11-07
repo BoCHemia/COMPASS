@@ -4,12 +4,11 @@ from modules.preprocessing import *
 # INPUT
 # -----------------------------
 
-input_path = "data"
-db_path = "drugbank"
-output_path = "output"
-temp_path = "temp"
+input_path = os.path.join(PROJECT_ROOT, "data")
+temp_path = os.path.join(PROJECT_ROOT, "temp")
 
-input_file_name = "raw_drugbank_5.1.13.csv"
+folder_name = "DrugBank"
+file_name = "drugbank_5.1.13"
 
 # -----------------------------
 # PREPROCESSING
@@ -17,7 +16,7 @@ input_file_name = "raw_drugbank_5.1.13.csv"
 
 print("Getting started ...")
 
-df = pd.read_csv(os.path.join(input_path, db_path, input_file_name))
+df = pd.read_csv(os.path.join(input_path, folder_name, f"raw_{file_name}.csv"))
 df.rename(columns={"Common name": "PREFERRED_NAME",
                    "CAS": "CASRN",
                    "Standard InChI Key": "INCHIKEY",
@@ -30,11 +29,14 @@ df_structures = df.dropna(subset=["INCHIKEY"]).reset_index(drop=True)
 
 print("Retrieving PubChem data ...")
 
-output_file = os.path.join(temp_path, "drugbank_5.1.13_pubchem.csv")
-pubchem = get_pubchem_data(df_structures, 'INCHIKEY', 'CASRN', 'PREFERRED_NAME', output_file, resume=True)
+output_file = os.path.join(temp_path, f"{file_name}_pubchem.csv")
+pubchem = get_pubchem_data(df_structures, 'INCHIKEY', 'CASRN', 'PREFERRED_NAME', output_file)
 
 df_pubchem = df_structures.merge(pubchem[["CID", "IUPAC", "INCHIKEY", "InChI", "SMILES"]], on="INCHIKEY", how="left")
 df_pubchem.fillna({'SMILES': ''}, inplace=True)
+
+# intermediate - without classyfire
+df_pubchem.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
 
 # -----------------------------
 # MERGE WITH CLASSYFIRE DATA
@@ -42,10 +44,10 @@ df_pubchem.fillna({'SMILES': ''}, inplace=True)
 
 print("Merging with Classyfire data ...")
 
-classyfire_raw = pd.read_csv(os.path.join(input_path, "classyfire/raw_classyfire.csv"))
+classyfire_raw = pd.read_csv(os.path.join(input_path, "ClassyFire", "raw_classyfire.csv"))
 classyfire = classyfire_raw.drop_duplicates()
 classyfire = classyfire_raw.dropna(subset="Kingdom")
-classyfire.to_csv(os.path.join(input_path, "classyfire/input_classyfire.csv"), index=False)
+classyfire.to_csv(os.path.join(input_path, "ClassyFire", "input_classyfire.csv"), index=False)
 
 df_classyfire = pd.merge(df_pubchem, classyfire, on='INCHIKEY', how='left')
 
@@ -60,7 +62,7 @@ if len(df_missing)>0:
     n_splits = int(np.ceil(df_missing.shape[0]/n))
     splits = np.array_split(df_missing.to_numpy(), n_splits)
 
-    out_dir = os.path.join(temp_path, "classyfire", db_path, "batches_missing")
+    out_dir = os.path.join(temp_path, "ClassyFire", folder_name, "batches_missing")
     os.makedirs(out_dir, exist_ok=True)
 
     # Save to .csv
@@ -72,4 +74,6 @@ if len(df_missing)>0:
 
 else:
     print(f"Data preparation complete. Saving input_drugbank_5.1.13.csv.")
-    df_classyfire.to_csv(os.path.join(input_path, db_path, "input_drugbank_5.1.13.csv"), index=False)
+    df_classyfire.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
+
+    print("Shape of DrugBank dataframe:", df_classyfire.shape)
