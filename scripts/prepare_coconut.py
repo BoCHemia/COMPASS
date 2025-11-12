@@ -52,6 +52,10 @@ df_out.fillna({'SMILES': ''}, inplace=True)
 df_out.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
 print("Shape of COCONUT dataframe:", df_out.shape)
 
+# -----------------------------
+# remove duplicates
+# -----------------------------
 # df_out = pd.read_csv(os.path.join(input_path, f"input_{name_tag}.csv")
-# df
-# print("Shape of COCONUT dataframe, only :", df_out.shape)
+df_out.drop_duplicates(subset=['INCHIKEY'], inplace=True)
+df_out['equal'] = np.where((df_out['IUPAC'] == df_out['PREFERRED_NAME']), True, False)
+print("Shape of COCONUT dataframe, only :", df_out.shape)
