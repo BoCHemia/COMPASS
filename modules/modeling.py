@@ -100,17 +100,17 @@ def fit_tsne_model(df_fingerprints):
     print('Finished training')
     return tsne, coordinates
 
-def save_model(model, filename, pickle=True, zip=True):
+def save_model(model, file_name, pickle=True, zip=True):
     """
     Save model as pickle to temp and as zipped pickle to output
     :param model: trained tSNE model
-    :param filename: name tag of the original data file (e.g. for 'data_market.csv' the filename would be 'data_market')
+    :param file_name: name tag of the original data file (e.g. for 'data_market.csv' the file_name would be 'data_market')
     :param pickle: save as pickle file, True by default
     :param zip: compress to zip file, True by default
     """
     ensure_dirs()
-    model_path = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
-    model_path_zip = os.path.join(PROJECT_ROOT, "models", filename + '_trained_tSNE.zip')
+    model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.pkl')
+    model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
 
     # Saving trained tSNE object to temp folder
     if pickle:
@@ -125,47 +125,47 @@ def save_model(model, filename, pickle=True, zip=True):
             zipf.write(model_path)
         print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
 
-def save_coordinates(coordinates, foldername, filename, reference_data=""):
+def save_coordinates(coordinates, folder_name, file_name, reference_data=""):
     """
-    Save coordinates to output file in data folder (data/[foldername]/output_[filename].csv)
+    Save coordinates to output file in data folder (data/[folder_name]/output_[file_name].csv)
 
     :param coordinates: coordinates as received from model fitting with index as InChIKey
-    :param foldername: folder name for saving the input file annotated with TSNE coordinates
-    :param filename: name tag of the original data file (e.g. for 'data_market.csv')
+    :param folder_name: folder name for saving the input file annotated with TSNE coordinates
+    :param file_name: name tag of the original data file (e.g. for 'data_market.csv')
     """
     # load input df
-    input_df_path = os.path.join(PROJECT_ROOT, "data", foldername, "input_" + filename + ".csv")
+    input_df_path = os.path.join(PROJECT_ROOT, "data", folder_name, "input_" + file_name + ".csv")
     df = pd.read_csv(input_df_path)
     df_coordinates = df.merge(coordinates, on='INCHIKEY', how='left')
 
     if reference_data:
-        filename += "_on_" + reference_data
+        file_name += "_on_" + reference_data
     # save df, annotated with TSNE coordinates
-    output_path = os.path.join(PROJECT_ROOT, "data", foldername, "output_" + filename + '.csv')
+    output_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
     df_coordinates.to_csv(output_path, index=True)
     print(f"Saved coordinates to {output_path}")
 
     
-def load_coordinates(foldername, filename, reference_data=""):
+def load_coordinates(folder_name, file_name, reference_data=""):
     if reference_data:
-        filename += f'_on_{reference_data}'
-    coordinates_path = os.path.join(PROJECT_ROOT, "data", foldername, "output_" + filename + '.csv')
+        file_name += f'_on_{reference_data}'
+    coordinates_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
     coordinates = pd.read_csv(coordinates_path)
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
-def load_model(filename, from_zip = False):
+def load_model(file_name, from_zip = False):
     """
     Load model from pickle file (default) or from zip file (not implemented)
-    :param filename: name tag of the original data file (e.g. 'data_market' for 'data_market.csv')
+    :param file_name: name tag of the original data file (e.g. 'data_market' for 'data_market.csv')
     :param from_zip: Load from zip file #todo implement this option
     :return: model object
     """
     if from_zip:
-        model_path_zip = os.path.join(PROJECT_ROOT, "models", filename + '_trained_tSNE.zip')
+        model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
         model = unzip_and_load_pkl(model_path_zip)
     else:
-        model_path = os.path.join(PROJECT_ROOT, "temp", filename + '_trained_tSNE.pkl')
+        model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.pkl')
         model = load_pickle(model_path)
     return model
 

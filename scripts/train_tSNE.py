@@ -9,11 +9,15 @@ import sys
 sys.stdout.reconfigure(line_buffering=True)
 
 #### input ####
-input_folder_name = "drugbank_5.1.13"
-input_data_name = "drugbank"
+input_folder_name = "ZeroPM"
+input_data_name = "zeropm_partial"
+
+# input_folder_name = "DrugBank"
+# input_data_name = "drugbank_5.1.13_partial"
 
 #### preprocessing and calculating fingerprints ####
-df_fingerprints = preprocess_data(input_folder_name, input_data_name, radius=2, fpSize=1024)
+df = load_input_file(file_name=input_data_name, folder_name=input_folder_name)
+df_fingerprints = preprocess_data(df)
 save_fingerprints(df_fingerprints, input_data_name)
 
 #### load training_array from fingerprints file ####
@@ -25,4 +29,4 @@ trained_model, coordinates = fit_tsne_model(df_fingerprints=df_fingerprints)
 # trained_model = load_model(filename=input_data_name)
 # coordinates = load_coordinates(foldername=input_folder_name, filename=input_data_name)
 save_model(model=trained_model, file_name=input_data_name, zip=False)
-save_coordinates(coordinates=coordinates, foldername=input_folder_name, file_name=input_data_name)
+save_coordinates(coordinates=coordinates, folder_name=input_folder_name, file_name=input_data_name)

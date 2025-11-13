@@ -20,18 +20,18 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Data and model loading
 # -----------------------------
 
-def preprocess_data(df, radius=2, nBits=1024, **kwargs):
+def preprocess_data(df, radius=2, fpSize=1024, **kwargs):
     """
     Wrapper function to standardize SMILES, add InChIKeys and calculate fingerprints
     :param df: input dataframe loaded with load_input_file() or provided as user input
-    :**kwargs: fingerprint calculation parameters in addition to radius and nBits (defaults provided)
+    :**kwargs: fingerprint calculation parameters in addition to radius and fpSize (defaults provided)
     :return: pandas DataFrame of fingerprints
     """
     print("Preprocessing data ...")
     df.fillna({'SMILES': ''}, inplace=True) # replace nan SMILES with empty strings
     df = standardize_structures(df) # add standardized SMILES and INCHIKEY columns
 
-    fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=radius, nBits=nBits, **kwargs))
+    fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=radius, fpSize=fpSize, **kwargs))
     df_fingerprints = pd.concat([df["INCHIKEY"], fingerprints], axis=1)
     print("Data preprocessed (standardized SMILES, INCHIKEY) and fingerprints calculated.")
     return df_fingerprints
@@ -380,7 +380,7 @@ def standardize_smiles_df(df, col_smiles, **kwargs):
     col_smiles: string, mandatory
         The column name containing the SMILES
     **kwargs: optional
-        Pass in any arguments taken by rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect such as radius and nBits
+        Pass in any arguments taken by rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect such as radius and fpSize
 
     Outputs
     ----------
@@ -429,7 +429,7 @@ def calculate_descriptors_morgan_df(df, col_smiles, **kwargs):
     col_smiles: string, mandatory
         The column name containing the SMILES
     **kwargs: optional
-        Pass in any arguments taken by rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect such as radius and nBits
+        Pass in any arguments taken by rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect such as radius and fpSize
 
     Outputs
     ----------
