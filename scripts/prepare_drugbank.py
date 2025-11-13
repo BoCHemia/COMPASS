@@ -36,7 +36,7 @@ df_pubchem = df_structures.merge(pubchem[["CID", "IUPAC", "INCHIKEY", "InChI", "
 df_pubchem.fillna({'SMILES': ''}, inplace=True)
 
 # intermediate - without classyfire
-df_pubchem.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
+df_pubchem.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_noCF.csv"), index=False)
 
 # -----------------------------
 # MERGE WITH CLASSYFIRE DATA
@@ -50,6 +50,9 @@ classyfire = classyfire_raw.dropna(subset="Kingdom")
 classyfire.to_csv(os.path.join(input_path, "ClassyFire", "input_classyfire.csv"), index=False)
 
 df_classyfire = pd.merge(df_pubchem, classyfire, on='INCHIKEY', how='left')
+
+# intermediate - partial classyfire
+df_classyfire.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_partial.csv"), index=False)
 
 # -----------------------------
 # SAVE OR REQUEST MISSING DATA
