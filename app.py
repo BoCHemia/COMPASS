@@ -12,12 +12,13 @@ def main():
                 This apps lets you visualize the space of marketed chemicals.  
                 """)
 
-    # Dropdown menu for selecting a molecule
-    endpoints = ['Standard', 'PFAS_space']
+    # Dropdown menu for selecting the reference model
+    available_ref_spaces = ['DrugBank', 'PFAS', 'ZeroPM'] 
     reference_space = st.selectbox('Choose reference space',
                                      placeholder='Choose an option',
                                      index=None,
-                                     options=endpoints)
+                                     options=available_ref_spaces)
+    
 
     # Upload CSV file
     users_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
@@ -26,7 +27,7 @@ def main():
     def convert_df(df):
         # IMPORTANT: Cache the conversion to prevent computation on every rerun
         return df.to_csv().encode("utf-8")
-    example_csv = pd.read_csv(os.path.join('data','nist_potential_pfas_smiles.tsv'), sep='\t')
+    example_csv = pd.read_csv(os.path.join('data','PFAS', 'output_pfas.csv'))
     csv = convert_df(example_csv)
 
     st.sidebar.download_button(
@@ -43,44 +44,72 @@ def main():
         # Show the input data
         st.write("Uploaded data:", users_target_chemicals)
 
-        from modules.preprocessing import calculate_descriptors_morgan_df
-        morgan_df = calculate_descriptors_morgan_df(df=users_target_chemicals, col_smiles="SMILES")
-        st.write("Morgan Fingerprints:", morgan_df)
+
+        # from modules.preprocessing import calculate_descriptors_morgan_df
+        # morgan_df = calculate_descriptors_morgan_df(df=users_target_chemicals, col_smiles="SMILES")
+        # st.write("Morgan Fingerprints:", morgan_df)
 
         print('Project substances')
-
-        with st.spinner("Projecting your substances of interest", show_time=True):
-            time.sleep(3)
-
-            if reference_space == 'Standard':
-                # Show the coordinates data
-                coordinates_df = pd.read_csv(os.path.join('data', 'data_market_tsne.csv'))
-                # st.write("Coordinates data:", coordinates_df)
-                from modules.visualizing import chemical_space_plot_grey
-                fig_grey = chemical_space_plot_grey(coordinates_df)
-                #fig_color = chemical_space_plot()  @TODO: I will check later because we need to specify hue_column and so on
-                st.write(fig_grey)
-
-                # Load the trained object
-                # Transform the user to the reference space of interest. 
-
-            elif reference_space == 'PFAS_NIST':
-                st.write("We will soon provide the PFAS reference space")
-                #@TODO: just load the PFAS coordinates? 
-            else:
-                st.write("Please choose an option")
+        from modules.modeling import load_coordinates
+        from modules.visualizing import chemical_space_plot_grey, map_input_data
 
 
-        
+            
+        if reference_space in available_ref_spaces:
+            with st.spinner("Projecting your substances of interest", show_time=True):
+                time.sleep(3)
+
+            ###### Plot 1: Drugbank on ZeroPM #####
+            # load reference coordinates
+            reference_folder = str(reference_space)
+            reference_file =  str.lower(reference_space)
+            reference_coordinates = load_coordinates(reference_folder, reference_file)
+
+            # load tSNE model object
+            from modules.modeling import load_model, preprocess_data, transform_target, save_fingerprints, save_coordinates
+            reference_data_name = "zeropm"
+            model = load_model(reference_data_name, from_zip=False)
+
+            # new_df = load_input_file(file_name, foldername=folder_name)
+            new_df = users_target_chemicals
+            new_fingerprints = preprocess_data(new_df)
+            save_fingerprints(fingerprints=new_fingerprints, filename='user_provided')
 
 
+            # transform
+            target_coordinates = transform_target(model, new_fingerprints)
+            save_coordinates(coordinates=target_coordinates,
+                            folder_name='online',
+                            file_name='user_provided',
+                            reference_data=reference_data_name)
+
+            # For now let's suppose that the user uploads the coordinates directly
+            # In reality the usser-provided-file will be preprocess and transformed. 
+            # new_coordinates = users_target_chemicals
+            # input_file = 'user_chemicals'
+            # Show the coordinates data
+            # st.write("Coordinates data:", coordinates_df)
 
 
+            
+            fig_grey = chemical_space_plot_grey(reference_coordinates, hover_data=['INCHIKEY', 'SMILES'], opacity=0.8)
+            figure = map_input_data(fig_grey, target_coordinates, nametag=input_file,
+                    hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'SMILES'],
+                    color="red",  opacity=1)
+            st.plotly_chart(figure, use_container_width=True)
+            
+            #fig_color = chemical_space_plot()  @TODO: I will check later because we need to specify hue_column and so on
+            st.write("{} is the reference space shown in grey.".format(reference_space))
+
+            # Load the trained object
+            # Transform the user to the reference space of interest. 
+
+        else:
+            st.write("Please choose an option")
 
 
-
-
-        st.success("Done!")
+    
+        st.success("Don e!")
 
         # # Show the predictions
         # st.markdown(""" ### Predictions: """)
