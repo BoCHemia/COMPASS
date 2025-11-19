@@ -109,7 +109,7 @@ def main():
 
 
     
-        st.success("Don e!")
+        st.success("Done!")
 
         # # Show the predictions
         # st.markdown(""" ### Predictions: """)
