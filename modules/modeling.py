@@ -8,6 +8,7 @@ import seaborn as sns
 from modules.preprocessing import *
 import zipfile
 import yaml
+import joblib
 
 ### Some comments:
 # - Xsmall is just a smaller subset of the training data to make some steps faster
@@ -49,7 +50,7 @@ def load_pickle(path):
     with open(path, "rb") as f:
         return pickle.load(f)
 
-def unzip_and_load_pkl(path_to_zipfile):
+def unzip_and_load(path_to_zipfile):
     """
     Unzip and unpickle a zip file to load a tSNE  model
     :param path_to_zipfile: Path to zip file
@@ -100,30 +101,39 @@ def fit_tsne_model(df_fingerprints):
     print('Finished training')
     return tsne, coordinates
 
-def save_model(model, file_name, pickle=True, zip=True):
+def save_model(model, file_name, pickle=True, zip=True, use_joblib=False):
     """
     Save model as pickle to temp and as zipped pickle to output
     :param model: trained tSNE model
     :param file_name: name tag of the original data file (e.g. for 'data_market.csv' the file_name would be 'data_market')
     :param pickle: save as pickle file, True by default
     :param zip: compress to zip file, True by default
+    :param joblib: save as joblib file, False by default. If joblib is true, no pickle file will be generated
     """
     ensure_dirs()
-    model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.pkl')
-    model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
+
 
     # Saving trained tSNE object to temp folder
-    if pickle:
+    if use_joblib:
+        model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.zlib')
+        print("--> Joblib tSNE object")
+        joblib.dump(model, model_path, compress=5)
+        print(f"Saved fitted tSNE embedding to {model_path}")
+
+    elif pickle:
+        model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.pkl')
         print("--> Pickle tSNE object")
         save_pickle(model, model_path)
         print(f"Saved fitted tSNE embedding to {model_path}")
 
-    # Saving zipped trained tSNE object to output folder
-    if zip:
-        print('--> Zip tSNE object')
-        with zipfile.ZipFile(model_path_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
-            zipf.write(model_path)
-        print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
+        # Saving zipped trained tSNE object to output folder
+        if zip:
+            model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
+            print('--> Zip tSNE object')
+            with zipfile.ZipFile(model_path_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
+                zipf.write(model_path)
+            print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
+
 
 def save_coordinates(coordinates, folder_name, file_name, reference_data=""):
     """
@@ -154,16 +164,19 @@ def load_coordinates(folder_name, file_name, reference_data=""):
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
-def load_model(file_name, from_zip = False):
+def load_model(file_name, from_zip = False, use_joblib=False):
     """
     Load model from pickle file (default) or from zip file (not implemented)
     :param file_name: name tag of the original data file (e.g. 'data_market' for 'data_market.csv')
     :param from_zip: Load from zip file #todo implement this option
     :return: model object
     """
-    if from_zip:
+    if use_joblib:
+        model_path_zip = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.zlib')
+        model = joblib.load(filename=model_path_zip)
+    elif from_zip:
         model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
-        model = unzip_and_load_pkl(model_path_zip)
+        model = unzip_and_load(model_path_zip)
     else:
         model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.pkl')
         model = load_pickle(model_path)
