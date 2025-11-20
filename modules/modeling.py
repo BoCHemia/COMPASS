@@ -198,31 +198,6 @@ def transform_tsne_embedding(tsne, df_fingerprints, col_index='INCHIKEY'):
 
     return df_embedding
 
-
-def transform_target(embedding_train,           # todo: code from José - I simplified it below, what do you think?
-                     target_space_fingerprints,
-                     emb_cache_path="temp/embedding_target_chemicals.npy",
-                     df_cache_path="temp/target_chemicals_space.csv"):
-    """
-    Transforms target fingerprints into the trained TSNE space, caches both the raw embedding and a CSV.
-    """
-    if os.path.exists(emb_cache_path) and os.path.exists(df_cache_path):
-        print(f"[cache] Loading transformed embedding from {emb_cache_path} and {df_cache_path}")
-        embedding_target_chemicals = np.load(emb_cache_path, allow_pickle=False)
-        target_chemicals_space = pd.read_csv(df_cache_path)
-        return embedding_target_chemicals, target_chemicals_space
-
-    embedding_target_chemicals = embedding_train.transform(target_space_fingerprints)
-    target_chemicals_space = pd.DataFrame(embedding_target_chemicals, columns=['tsne_v1', 'tsne_v2'])
-
-    np.save(emb_cache_path, embedding_target_chemicals, allow_pickle=False)
-    target_chemicals_space.to_csv(df_cache_path, index=False)
-    print(f"[cache] Saved transformed embedding to {emb_cache_path}")
-    print(f"[cache] Saved target chemicals space CSV to {df_cache_path}")
-
-    print(target_chemicals_space)
-    return embedding_target_chemicals, target_chemicals_space
-
 def transform_target(model, fingerprints):
     # Prepare boolean fingerprint array
     fingerprints.dropna(inplace=True)
