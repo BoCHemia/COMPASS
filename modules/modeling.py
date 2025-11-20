@@ -2,7 +2,8 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
-from openTSNE.sklearn import TSNE
+from openTSNE.en import TSNE
+from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 import seaborn as sns
 from modules.preprocessing import *
@@ -229,3 +230,14 @@ def transform_target(model, fingerprints):
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     coordinates_df.index = fingerprints['INCHIKEY']
     return coordinates_df
+
+# def build_surrogate_model(folder_name, file_name, df_fingerprints):
+#     # target variables: TSNE coordinates
+#     df = load_coordinates(folder_name, file_name)
+#     Y1 = df['TSNE1']
+#     Y2 = df['TSNE2']
+#     # fingerprints
+#     df_fingerprints.dropna(inplace=True)
+#     X = np.array(df_fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+#
+#     return model_1, model_2
