@@ -13,11 +13,17 @@ def main():
                 """)
 
     # Dropdown menu for selecting the reference model
-    available_ref_spaces = ['DrugBank', 'PFAS', 'ZeroPM'] 
+    # available_ref_spaces = ['DrugBank', 'PFAS', 'ZeroPM'] 
+    available_ref_spaces_dict = {'DrugBank': ['5.1.13'], 'PFAS': ['nist'], 'ZeroPM': ['partial']}
     reference_space = st.selectbox('Choose reference space',
                                      placeholder='Choose an option',
                                      index=None,
-                                     options=available_ref_spaces)
+                                     options=available_ref_spaces_dict.keys())
+    
+    reference_space_version = st.selectbox('Choose reference space',
+                                    placeholder='Choose an option',
+                                    index=None,
+                                    options=available_ref_spaces_dict.get(reference_space))
     
 
     # Upload CSV file
@@ -55,20 +61,21 @@ def main():
 
 
             
-        if reference_space in available_ref_spaces:
+        if reference_space in available_ref_spaces_dict.keys():
             with st.spinner("Projecting your substances of interest", show_time=True):
                 time.sleep(3)
 
             ###### Plot 1: Drugbank on ZeroPM #####
             # load reference coordinates
+            print(reference_space)
             reference_folder = str(reference_space)
-            reference_file =  str.lower(reference_space)
+            reference_file =  str.lower(reference_space + "_" + reference_space_version)
             reference_coordinates = load_coordinates(reference_folder, reference_file)
 
             # load tSNE model object
             from modules.modeling import load_model, preprocess_data, transform_target, save_fingerprints, save_coordinates
-            reference_data_name = "zeropm"
-            model = load_model(reference_data_name, from_zip=False)
+            reference_data_name = reference_file
+            model = load_model(reference_data_name, use_joblib=False, from_zip=False)
 
             # new_df = load_input_file(file_name, foldername=folder_name)
             new_df = users_target_chemicals
@@ -109,7 +116,7 @@ def main():
 
 
     
-        st.success("Done!")
+        st.success("Done!!!")
 
         # # Show the predictions
         # st.markdown(""" ### Predictions: """)
