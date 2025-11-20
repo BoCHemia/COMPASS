@@ -33,7 +33,7 @@ def main():
     def convert_df(df):
         # IMPORTANT: Cache the conversion to prevent computation on every rerun
         return df.to_csv().encode("utf-8")
-    example_csv = pd.read_csv(os.path.join('data','PFAS', 'output_pfas.csv'))
+    example_csv = pd.read_csv(os.path.join('app_data', 'example_target_chemicals.csv'))
     csv = convert_df(example_csv)
 
     st.sidebar.download_button(
@@ -42,8 +42,6 @@ def main():
         file_name="test_space.csv",
         mime="text/csv",
     )
-
-    st.write("Uploaded data:", users_target_chemicals)
 
     if users_target_chemicals is not None:
         # Load the uploaded data
@@ -82,7 +80,7 @@ def main():
             # new_df = load_input_file(file_name, foldername=folder_name)
             new_df = users_target_chemicals
             new_fingerprints = preprocess_data(new_df)
-            save_fingerprints(fingerprints=new_fingerprints, filename='user_provided')
+            save_fingerprints(fingerprints=new_fingerprints, file_name='user_provided')
 
 
             # transform
@@ -95,7 +93,7 @@ def main():
             # For now let's suppose that the user uploads the coordinates directly
             # In reality the usser-provided-file will be preprocess and transformed. 
             # new_coordinates = users_target_chemicals
-            # input_file = 'user_chemicals'
+            input_file = 'user_chemicals'
             # Show the coordinates data
             # st.write("Coordinates data:", coordinates_df)
 
