@@ -17,10 +17,17 @@ __pycache__
 *.tiff
 *.jpeg
 
+
+# Ignore all the "heavy files" folders (data, models, temp)
+data/
+models/
+temp/
+
+
 # Temporarily ignore fingerprints
 # data/fingerprints/*
 
-# Temporarily ignore DB folder content
+# Temporarily ignore DB folder contents
 data/ZeroPM/*
 data/COCONUT/*
 data/input/pfas_envipath.csv

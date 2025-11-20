@@ -32,3 +32,11 @@
 **/values.dev.yaml
 LICENSE
 README.md
+
+## Ignore heavy data so it is not copied into the image
+**/data
+**/temp
+**/models
+**/output
+**/tutorials
+test.ipynb
