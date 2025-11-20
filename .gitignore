@@ -19,6 +19,7 @@ __pycache__
 
 
 # Ignore all the "heavy files" folders (data, models, temp)
+# app_data and output are expected to be fairly light and are not ignored
 data/
 models/
 temp/
