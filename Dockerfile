@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-ARG PYTHON_VERSION=3.11.0
-FROM python:${PYTHON_VERSION}-slim as base
+ARG PYTHON_VERSION=3.12.0
+FROM python:${PYTHON_VERSION}-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -25,8 +25,12 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Copy source and give ownership to appuser
 COPY --chown=appuser:appuser . /app
 
+# Ensure uploads folder exists and is writable
+RUN mkdir -p /app/uploads && chown -R appuser:appuser /app/uploads
+
 USER appuser
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "app.py"]
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
