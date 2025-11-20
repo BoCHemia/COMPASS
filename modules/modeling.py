@@ -29,6 +29,8 @@ def ensure_dirs():
     """
     os.makedirs(os.path.join(PROJECT_ROOT, "temp"), exist_ok=True)
     os.makedirs(os.path.join(PROJECT_ROOT, "output"), exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_ROOT, "models"), exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_ROOT, "data"), exist_ok=True)
 
 
 def save_pickle(obj, path):
@@ -115,13 +117,13 @@ def save_model(model, file_name, pickle=True, zip=True, use_joblib=False):
 
     # Saving trained tSNE object to temp folder
     if use_joblib:
-        model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.zlib')
+        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
         print("--> Joblib tSNE object")
         joblib.dump(model, model_path, compress=5)
         print(f"Saved fitted tSNE embedding to {model_path}")
 
     elif pickle:
-        model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.pkl')
+        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.pkl')
         print("--> Pickle tSNE object")
         save_pickle(model, model_path)
         print(f"Saved fitted tSNE embedding to {model_path}")
@@ -172,13 +174,13 @@ def load_model(file_name, from_zip = False, use_joblib=False):
     :return: model object
     """
     if use_joblib:
-        model_path_zip = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.zlib')
+        model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
         model = joblib.load(filename=model_path_zip)
     elif from_zip:
         model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
         model = unzip_and_load(model_path_zip)
     else:
-        model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.pkl')
+        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.pkl')
         model = load_pickle(model_path)
     return model
 
