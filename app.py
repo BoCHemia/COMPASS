@@ -14,7 +14,7 @@ def main():
 
     # Dropdown menu for selecting the reference model
     # available_ref_spaces = ['DrugBank', 'PFAS', 'ZeroPM'] 
-    available_ref_spaces_dict = {'DrugBank': ['5.1.13'], 'PFAS': ['nist'], 'ZeroPM': ['partial']}
+    available_ref_spaces_dict = {'DrugBank': ['5.1.13', '5.1.13_partial'], 'PFAS': ['nist'], 'ZeroPM': ['partial']}
     reference_space = st.selectbox('Choose reference space',
                                      placeholder='Choose an option',
                                      index=None,
@@ -43,6 +43,8 @@ def main():
         mime="text/csv",
     )
 
+    st.write("Uploaded data:", users_target_chemicals)
+
     if users_target_chemicals is not None:
         # Load the uploaded data
         users_target_chemicals = pd.read_csv(users_target_chemicals)
@@ -69,7 +71,7 @@ def main():
             # load reference coordinates
             print(reference_space)
             reference_folder = str(reference_space)
-            reference_file =  str.lower(reference_space + "_" + reference_space_version)
+            reference_file = str.lower(reference_space + "_" + reference_space_version)
             reference_coordinates = load_coordinates(reference_folder, reference_file)
 
             # load tSNE model object
