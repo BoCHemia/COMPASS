@@ -16,8 +16,9 @@ services:
       - 8501:8501
     volumes:
       - ./models:/app/models:ro
-      - ./data:/app/data:ro
-      - uploads:/app/uploads
+      - ./data:/app/data
+      - ./output:/app/output
+
 volumes:
   uploads:
 
