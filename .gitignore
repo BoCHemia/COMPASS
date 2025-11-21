@@ -8,6 +8,7 @@ temp/*
 modules/__pycache__/
 models/*
 __pycache__
+.DS_Store
 
 # Ignore all zip
 *.zip

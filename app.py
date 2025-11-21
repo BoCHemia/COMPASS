@@ -20,7 +20,7 @@ def main():
                                      index=None,
                                      options=available_ref_spaces_dict.keys())
     
-    reference_space_version = st.selectbox('Choose reference space',
+    reference_space_version = st.selectbox('Choose version',
                                     placeholder='Choose an option',
                                     index=None,
                                     options=available_ref_spaces_dict.get(reference_space))
@@ -59,8 +59,6 @@ def main():
         from modules.modeling import load_coordinates
         from modules.visualizing import chemical_space_plot_grey, map_input_data
 
-
-            
         if reference_space in available_ref_spaces_dict.keys():
             with st.spinner("Projecting your substances of interest", show_time=True):
                 time.sleep(3)
@@ -72,21 +70,27 @@ def main():
             reference_file = str.lower(reference_space + "_" + reference_space_version)
             reference_coordinates = load_coordinates(reference_folder, reference_file)
 
+            print("loading reference coordinates worked")
+            print("Next the trained model is load; this takes 1-2 mins")
             # load tSNE model object
             from modules.modeling import load_model, preprocess_data, transform_target, save_fingerprints, save_coordinates
             reference_data_name = reference_file
             model = load_model(reference_data_name, use_joblib=False, from_zip=False)
+
+            print("loading model worked")
 
             # new_df = load_input_file(file_name, foldername=folder_name)
             new_df = users_target_chemicals
             new_fingerprints = preprocess_data(new_df)
             save_fingerprints(fingerprints=new_fingerprints, file_name='user_provided')
 
+            print("getting fingerprints and saving them worked")
 
             # transform
             target_coordinates = transform_target(model, new_fingerprints)
+            print("getting the target coordinates worked")
             save_coordinates(coordinates=target_coordinates,
-                            folder_name='online',
+                            folder_name='uploads',
                             file_name='user_provided',
                             reference_data=reference_data_name)
 
@@ -97,8 +101,6 @@ def main():
             # Show the coordinates data
             # st.write("Coordinates data:", coordinates_df)
 
-
-            
             fig_grey = chemical_space_plot_grey(reference_coordinates, hover_data=['INCHIKEY', 'SMILES'], opacity=0.8)
             figure = map_input_data(fig_grey, target_coordinates, nametag=input_file,
                     hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'SMILES'],
