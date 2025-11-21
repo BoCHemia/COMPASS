@@ -1,3 +1,4 @@
+import resource
 import streamlit as st
 import pandas as pd
 import time
@@ -28,6 +29,7 @@ def main():
 
     # Upload CSV file
     users_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
+    user_file_name = 'users_target_chemicals' # placeholder to allow user specified naming later
 
     @st.cache_data
     def convert_df(df):
@@ -44,8 +46,9 @@ def main():
     )
 
     if users_target_chemicals is not None:
-        # Load the uploaded data
+        # Load the uploaded data, save to data/USER folder
         users_target_chemicals = pd.read_csv(users_target_chemicals)
+        users_target_chemicals.to_csv(os.path.join('data', '_USER', user_file_name + '.csv'), index=False)
 
         # Show the input data
         st.write("Uploaded data:", users_target_chemicals)
@@ -57,32 +60,30 @@ def main():
 
         print('Project substances')
         from modules.modeling import load_coordinates
-        from modules.visualizing import chemical_space_plot_grey, map_input_data
+        from modules.visualizing import plot_chemical_space # chemical_space_plot_grey, map_input_data
 
         if reference_space in available_ref_spaces_dict.keys():
             with st.spinner("Projecting your substances of interest", show_time=True):
                 time.sleep(3)
 
-            ###### Plot 1: Drugbank on ZeroPM #####
+            ###### Plot 1: Plot user target chemicals on reference space #####
             # load reference coordinates
             print(reference_space)
-            reference_folder = str(reference_space)
-            reference_file = str.lower(reference_space + "_" + reference_space_version)
-            reference_coordinates = load_coordinates(reference_folder, reference_file)
+            reference_folder_name = str(reference_space)
+            reference_file_name = str.lower(reference_space + "_" + reference_space_version)
+            reference_coordinates = load_coordinates(reference_folder_name, reference_file_name)
 
             print("loading reference coordinates worked")
-            print("Next the trained model is load; this takes 1-2 mins")
+            print("Next the trained model is loaded; this takes 1-2 mins")
             # load tSNE model object
             from modules.modeling import load_model, preprocess_data, transform_target, save_fingerprints, save_coordinates
-            reference_data_name = reference_file
-            model = load_model(reference_data_name, use_joblib=False, from_zip=False)
-
+            model = load_model(reference_file_name, use_joblib=True) #use_joblib=False, from_zip=False
             print("loading model worked")
 
             # new_df = load_input_file(file_name, foldername=folder_name)
             new_df = users_target_chemicals
             new_fingerprints = preprocess_data(new_df)
-            save_fingerprints(fingerprints=new_fingerprints, file_name='user_provided')
+            save_fingerprints(fingerprints=new_fingerprints, file_name=user_file_name)
 
             print("getting fingerprints and saving them worked")
 
@@ -90,21 +91,22 @@ def main():
             target_coordinates = transform_target(model, new_fingerprints)
             print("getting the target coordinates worked")
             save_coordinates(coordinates=target_coordinates,
-                            folder_name='uploads',
-                            file_name='user_provided',
-                            reference_data=reference_data_name)
+                            folder_name='_USER',
+                            file_name=user_file_name,
+                            reference_name=reference_file_name)
 
             # For now let's suppose that the user uploads the coordinates directly
             # In reality the usser-provided-file will be preprocess and transformed. 
             # new_coordinates = users_target_chemicals
-            input_file = 'user_chemicals'
+            # input_file = 'user_chemicals'
             # Show the coordinates data
             # st.write("Coordinates data:", coordinates_df)
 
-            fig_grey = chemical_space_plot_grey(reference_coordinates, hover_data=['INCHIKEY', 'SMILES'], opacity=0.8)
-            figure = map_input_data(fig_grey, target_coordinates, nametag=input_file,
-                    hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'SMILES'],
-                    color="red",  opacity=1)
+            fig_grey = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
+                                hover_name='PREFERRED_NAME',  hover_data=['INCHIKEY','SMILES'], opacity=0.8)
+            figure = plot_chemical_space(target_coordinates, nametag=user_file_name, map_on=fig_grey,
+                        hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'SMILES'],
+                        color='red', opacity=1)
             st.plotly_chart(figure, use_container_width=True)
             
             #fig_color = chemical_space_plot()  @TODO: I will check later because we need to specify hue_column and so on

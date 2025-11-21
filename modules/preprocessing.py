@@ -33,7 +33,9 @@ def preprocess_data(df, radius=2, fpSize=1024, **kwargs):
 
     fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=radius, fpSize=fpSize, **kwargs))
     df_fingerprints = pd.concat([df["INCHIKEY"], fingerprints], axis=1)
+    
     print("Data preprocessed (standardized SMILES, INCHIKEY) and fingerprints calculated.")
+
     return df_fingerprints
 
 
@@ -59,27 +61,27 @@ def load_input_file(file_name, folder_name):
     return df
 
 
-def save_fingerprints(fingerprints, file_name):
+def save_fingerprints(fingerprints, folder_name, file_name):
     """
     Save fingerprints to .csv file
     :param fingerprints: fingerprints dataframe
     :param file_name: name tag
     """
-    out_dir = os.path.join(PROJECT_ROOT, "uploads", "fingerprints")
+    out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
     os.makedirs(out_dir, exist_ok=True)
 
-    fingerprints_df_path = os.path.join(out_dir, file_name + "_fingerprints.csv")
-    fingerprints.to_csv(fingerprints_df_path, index=False)
-    print("Fingerprints saved to ", fingerprints_df_path)
+    fingerprints_path = os.path.join(PROJECT_ROOT, "data", folder_name, "fingerprints_" + file_name + '.csv')
+    fingerprints.to_csv(fingerprints_path, index=False)
+    print("Fingerprints saved to ", fingerprints_path)
 
 
-def load_fingerprints(file_name):
+def load_fingerprints(folder_name, file_name):
     """
 
     :param file_name:
     :return:
     """
-    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", "fingerprints", file_name + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join(PROJECT_ROOT, "data", folder_name, "fingerprints_" + file_name + '.csv')
     fingerprints = pd.read_csv(fingerprints_df_path)
     return fingerprints
 

@@ -137,7 +137,7 @@ def save_model(model, file_name, pickle=True, zip=True, use_joblib=False):
             print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
 
 
-def save_coordinates(coordinates, folder_name, file_name, reference_data=""):
+def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     """
     Save coordinates to output file in data folder (data/[folder_name]/output_[file_name].csv)
 
@@ -150,8 +150,8 @@ def save_coordinates(coordinates, folder_name, file_name, reference_data=""):
     df = pd.read_csv(input_df_path)
     df_coordinates = df.merge(coordinates, on='INCHIKEY', how='left')
 
-    if reference_data:
-        file_name += "_on_" + reference_data
+    if reference_name:
+        file_name += "_on_" + reference_name
     # save df, annotated with TSNE coordinates
     output_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
     df_coordinates.to_csv(output_path, index=True)
@@ -166,7 +166,7 @@ def load_coordinates(folder_name, file_name, reference_data=""):
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
-def load_model(file_name, from_zip = False, use_joblib=False):
+def load_model(file_name, from_zip=False, use_joblib=False):
     """
     Load model from pickle file (default) or from zip file (not implemented)
     :param file_name: name tag of the original data file (e.g. 'data_market' for 'data_market.csv')
@@ -174,35 +174,35 @@ def load_model(file_name, from_zip = False, use_joblib=False):
     :return: model object
     """
     if use_joblib:
-        model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
-        model = joblib.load(filename=model_path_zip)
+        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
+        print("loading joblib model from: " + model_path)
+        model = joblib.load(filename=model_path)   
     elif from_zip:
-        model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
-        model = unzip_and_load(model_path_zip)
+        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
+        print("loading zip model from: " + model_path)
+        model = unzip_and_load(model_path) 
     else:
         model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.pkl')
+        print("loading pickle model from: " + model_path)
         model = load_pickle(model_path)
+  
     return model
 
 # -----------------------------
 # Modeling (for the target space)
 # -----------------------------
 
-def transform_tsne_embedding(tsne, df_fingerprints, col_index='INCHIKEY'):
+def transform_target(model, fingerprints):
+    
     """
     Transforms target fingerprints to embed into trained t-SNE space
     """
-    fps = np.array(df_fingerprints.iloc[:, -1024:].astype('bool'))
-    df_embedding = pd.DataFrame(tsne.transform(fps), columns=['TSNE1', 'TSNE2'])
-    df_embedding.index = df_fingerprints[col_index]
 
-    return df_embedding
-
-def transform_target(model, fingerprints):
     # Prepare boolean fingerprint array
     fingerprints.dropna(inplace=True)
     X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
     coordinates_target = model.transform(X)
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     coordinates_df.index = fingerprints['INCHIKEY']
+
     return coordinates_df

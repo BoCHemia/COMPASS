@@ -18,7 +18,7 @@ input_data_name = "zeropm_partial"
 #### preprocessing and calculating fingerprints ####
 df = load_input_file(file_name=input_data_name, folder_name=input_folder_name)
 df_fingerprints = preprocess_data(df)
-save_fingerprints(df_fingerprints, input_data_name)
+save_fingerprints(df_fingerprints, folder_name=input_folder_name, file_name=input_data_name)
 
 #### load training_array from fingerprints file ####
 # --> can be used if fingerprints are already calculated and available in output folder
@@ -28,5 +28,5 @@ save_fingerprints(df_fingerprints, input_data_name)
 trained_model, coordinates = fit_tsne_model(df_fingerprints=df_fingerprints)
 # trained_model = load_model(filename=input_data_name)
 # coordinates = load_coordinates(foldername=input_folder_name, filename=input_data_name)
-save_model(model=trained_model, file_name=input_data_name, zip=False)
+save_model(model=trained_model, file_name=input_data_name, use_joblib=True)
 save_coordinates(coordinates=coordinates, folder_name=input_folder_name, file_name=input_data_name)
