@@ -19,17 +19,11 @@ cd global-chemical-space
 ### 2. Download the data & models
 
 Download data & models from our repo ()
-Save them in seperate folders in the same level (but outside) the cloned repo
-Example:
-Parent Folder
-    - global-chemical-space   -> This is the repo
-    - global-chemical-space-data
-    - global-chemical-space-models
 
 ### 3. Build the Docker to run the app
 
 ```
-docker build -t global-chemical-space-app .
+docker compose up
 ```
 
 The application will be available at:
