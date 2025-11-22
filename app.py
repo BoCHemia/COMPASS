@@ -77,23 +77,23 @@ def main():
             print("Next the trained model is loaded; this takes 1-2 mins")
             # load tSNE model object
             from modules.modeling import load_model, preprocess_data, transform_target, save_fingerprints, save_coordinates
-            model = load_model(reference_file_name, use_joblib=True) #use_joblib=False, from_zip=False
+            model = load_model(reference_file_name, use_joblib=False) #use_joblib=False, from_zip=False
             print("loading model worked")
 
             # new_df = load_input_file(file_name, foldername=folder_name)
             new_df = users_target_chemicals
             new_fingerprints = preprocess_data(new_df)
-            save_fingerprints(fingerprints=new_fingerprints, file_name=user_file_name)
+            save_fingerprints(fingerprints=new_fingerprints, folder_name='_USER', file_name=user_file_name)
 
             print("getting fingerprints and saving them worked")
 
             # transform
             target_coordinates = transform_target(model, new_fingerprints)
             print("getting the target coordinates worked")
-            save_coordinates(coordinates=target_coordinates,
-                            folder_name='_USER',
-                            file_name=user_file_name,
-                            reference_name=reference_file_name)
+            # save_coordinates(coordinates=target_coordinates,
+            #                 folder_name='_USER',
+            #                 file_name=user_file_name,
+            #                 reference_name=reference_file_name)
 
             # For now let's suppose that the user uploads the coordinates directly
             # In reality the usser-provided-file will be preprocess and transformed. 

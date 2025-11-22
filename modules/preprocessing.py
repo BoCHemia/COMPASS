@@ -67,10 +67,11 @@ def save_fingerprints(fingerprints, folder_name, file_name):
     :param fingerprints: fingerprints dataframe
     :param file_name: name tag
     """
-    out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
+    # out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
+    out_dir = os.path.join(PROJECT_ROOT, "data", "folder_name")
     os.makedirs(out_dir, exist_ok=True)
 
-    fingerprints_path = os.path.join(PROJECT_ROOT, "data", folder_name, "fingerprints_" + file_name + '.csv')
+    fingerprints_path = os.path.join(out_dir, "fingerprints_" + file_name + '.csv')
     fingerprints.to_csv(fingerprints_path, index=False)
     print("Fingerprints saved to ", fingerprints_path)
 

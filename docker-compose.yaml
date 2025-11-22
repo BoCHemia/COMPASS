@@ -18,6 +18,8 @@ services:
       - ./models:/app/models:ro
       - ./data:/app/data
       - ./output:/app/output
+      - ./app.py:/app/app.py:ro
+      - ./modules:/app/modules:ro
 
 volumes:
   uploads:
