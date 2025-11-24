@@ -114,7 +114,6 @@ def save_model(model, file_name, pickle=True, zip=True, use_joblib=False):
     """
     ensure_dirs()
 
-
     # Saving trained tSNE object to temp folder
     if use_joblib:
         model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
@@ -146,9 +145,15 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     :param file_name: name tag of the original data file (e.g. for 'data_market.csv')
     """
     # load input df
-    input_df_path = os.path.join(PROJECT_ROOT, "data", folder_name, "input_" + file_name + ".csv")
-    df = pd.read_csv(input_df_path)
-    df_coordinates = df.merge(coordinates, on='INCHIKEY', how='left')
+    user_input_folder = os.path.join(PROJECT_ROOT, "data", folder_name)
+    assert user_input_folder
+    if user_input_folder:
+        input_df_path = os.path.join(user_input_folder, "input_" + file_name + ".csv")
+        df = pd.read_csv(input_df_path)
+        df_coordinates = df.merge(coordinates, on='INCHIKEY', how='left')
+
+    else:
+        print("Could find the coordinates, please check coordinates have already being calculated")
 
     if reference_name:
         file_name += "_on_" + reference_name
@@ -201,7 +206,9 @@ def transform_target(model, fingerprints):
     # Prepare boolean fingerprint array
     fingerprints.dropna(inplace=True)
     X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+    print("Starting to transform")
     coordinates_target = model.transform(X)
+    print("Transforming worked")
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     coordinates_df.index = fingerprints['INCHIKEY']
 

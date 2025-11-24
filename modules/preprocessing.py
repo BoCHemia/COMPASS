@@ -68,7 +68,7 @@ def save_fingerprints(fingerprints, folder_name, file_name):
     :param file_name: name tag
     """
     # out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
-    out_dir = os.path.join(PROJECT_ROOT, "data", "folder_name")
+    out_dir = os.path.join(PROJECT_ROOT, "data", folder_name)
     os.makedirs(out_dir, exist_ok=True)
 
     fingerprints_path = os.path.join(out_dir, "fingerprints_" + file_name + '.csv')
@@ -76,10 +76,27 @@ def save_fingerprints(fingerprints, folder_name, file_name):
     print("Fingerprints saved to ", fingerprints_path)
 
 
+def save_user_file(user_dataframe, folder_name, file_name):
+    """
+    Save file input file in user_folder for later use
+    :param user_dataframe: typically a file uploaded by the user of the app
+    :param folder_name: the user private folder
+    :param file_name: file name provided by the user
+    """
+    # out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
+    out_dir = os.path.join(PROJECT_ROOT, "data", folder_name)
+    os.makedirs(out_dir, exist_ok=True)
+
+    user_file_path = os.path.join(out_dir, "input_" + file_name + '.csv')
+    user_dataframe.to_csv(user_file_path, index=False)
+    print("Target chemicals info saved to ", user_file_path)
+
+
 def load_fingerprints(folder_name, file_name):
     """
 
     :param file_name:
+    :para folder_name: the folder from which fingerprints should be loaded
     :return:
     """
     fingerprints_df_path = os.path.join(PROJECT_ROOT, "data", folder_name, "fingerprints_" + file_name + '.csv')

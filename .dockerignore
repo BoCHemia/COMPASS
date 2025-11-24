@@ -37,8 +37,9 @@ README.md
 **/data
 **/temp
 **/models
-**/output
+**/scripts
 **/tutorials
+**/output
 **/uploads
 test.ipynb
 **/.idea
