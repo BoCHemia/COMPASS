@@ -5,17 +5,19 @@ import time
 import os
 
 def main():
-
+    
     develop = st.checkbox("dev")
 
     # Some default variables
     users_target_chemicals = None
 
     # Streamlit app title
-    st.title("von Borries space of marketed chemicals")
+    st.title("Reference Chemical Space App")
 
     st.markdown("""
-                This apps lets you visualize the space of marketed chemicals.  
+                This apps standardizes visualizing chemical data and model applicability using reference chemical spaces.
+                You can select a reference chemical space (e.g., marketed chemicals, pharmaceuticals, PFAS, ...) and 
+                map your own chemical substances of interest into that space.
                 """)
 
     # Dropdown menu for selecting the reference model
@@ -86,7 +88,7 @@ def main():
             mime="text/csv",
         )
 
-        # Load the uploaded data, save to data/USER folder
+        # Load the uploaded data, save to data/_USER folder
         user_target_chemicals = pd.read_csv(user_target_chemicals)
         user_target_chemicals.to_csv(os.path.join('data', '_USER', target_file_name + '.csv'), index=False)
 
@@ -150,6 +152,7 @@ def main():
     target_coordinates = load_coordinates(target_folder_name,
                                             target_file_name,
                                             reference_data=reference_file_name)
+    print("loading target coordinates worked")
 
     # For now let's suppose that the user uploads the coordinates directly
     # In reality the usser-provided-file will be preprocess and transformed. 
@@ -158,11 +161,30 @@ def main():
     # Show the coordinates data
     # st.write("Coordinates data:", coordinates_df)
     reference_data_name = str(reference_space)
-    fig_grey = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
-                        hover_name='INCHIKEY',  hover_data=['INCHIKEY'], opacity=0.8)
-    figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=fig_grey,
-                hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'PREFERRED_NAME'],
-                color='red', opacity=1)
+    # fig_grey = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
+    #                     hover_name='INCHIKEY',  hover_data=['INCHIKEY'], opacity=0.8)
+    # figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=fig_grey,
+    #             hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'PREFERRED_NAME'],
+    #             color='red', opacity=1)
+    
+    hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
+    hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
+
+    figure = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
+                                 hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available)
+    
+    hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
+    hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
+
+    if 'Superclass' in hover_data_available:
+        figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=figure,
+                                    hover_name='PREFERRED_NAME', hover_data=hover_data_available,
+                                    column_for_color_map='Superclass', color_type='discrete', palette="Alphabet",
+                                    symbol='diamond', size=3, opacity=0.5)
+    else:
+        figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=figure,
+                hover_name='PREFERRED_NAME', hover_data=hover_data_available, color='red', size=3, opacity=0.7)
+        
     st.plotly_chart(figure, use_container_width=True)
     
     #fig_color = chemical_space_plot()  @TODO: I will check later because we need to specify hue_column and so on

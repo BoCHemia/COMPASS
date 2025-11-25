@@ -2,12 +2,12 @@ from modules.modeling import *
 from modules.preprocessing import *
 
 # load tSNE model object
-reference_file_name = "coconut"
+reference_file_name = "zeropm"
 model = load_model(reference_file_name, from_zip=False)
 
 # load data to plot
-folder_name = "DrugBank"
-file_name = 'drugbank_5.1.13_partial' # enter here the name of the input data set to transform
+folder_name = "PFAS"
+file_name = 'pfas_nist' # enter here the name of the input data set to transform
 
 new_df = load_input_file(file_name, folder_name=folder_name)
 new_fingerprints = preprocess_data(new_df)

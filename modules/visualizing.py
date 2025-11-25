@@ -86,7 +86,7 @@ def plot_chemical_space(df, nametag = '', map_on=None,
             input_fig.update_traces(showlegend=False)
             for c in color_discrete_map:
                 input_fig.add_trace(go.Scatter(x=[None], y=[None],
-                    mode='markers', marker=dict(color=color_discrete_map[c], size=12, opacity=1, symbol=symbol),
+                    mode='markers', marker=dict(color=color_discrete_map[c], size=min(size*4, 10), opacity=1, symbol=symbol),
                     legendgroup=c, showlegend=True, name=c))
 
         elif color_type== 'continuous': # continuous coloring
