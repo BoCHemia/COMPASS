@@ -12,12 +12,13 @@ def main():
     users_target_chemicals = None
 
     # Streamlit app title
-    st.title("Reference Chemical Space App")
+    st.title("COMPASS")
 
     st.markdown("""
-                This apps standardizes visualizing chemical data and model applicability using reference chemical spaces.
-                You can select a reference chemical space (e.g., marketed chemicals, pharmaceuticals, PFAS, ...) and 
-                map your own chemical substances of interest into that space.
+                COMPASS (**COMPA**rative chemical **S**pace **S**ystems) acts as a navigation tool for chemical space, offering harmonized reference maps 
+                that support transparent visualisation of chemical datasets and model domains. 
+                By selecting a reference space (e.g., marketed chemicals, pharmaceuticals, PFAS), 
+                you can locate and explore your own substances in relation to known chemical landscapes.
                 """)
 
     # Dropdown menu for selecting the reference model
