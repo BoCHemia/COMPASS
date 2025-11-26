@@ -70,7 +70,7 @@ def main():
 
     # Upload CSV file
     if target_space == 'my_own_substances':
-        users_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
+        user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
         target_file_name = 'user_target_chemicals' # placeholder to allow user specified naming later
         target_folder_name = '_USER'
 
@@ -101,7 +101,7 @@ def main():
 
             print("Next the user data is preprocessed and saved in user folder")
             # new_df = load_input_file(file_name, foldername=folder_name)
-            new_df = users_target_chemicals
+            new_df = user_target_chemicals
             # todo: This is weird. I would like to have preprocess_data() and get_fingerprints() functions
             new_fingerprints = preprocess_data(new_df)
             save_user_file(user_dataframe=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name )
@@ -112,7 +112,7 @@ def main():
             print("Next the trained reference model is loaded; this takes 1-3 mins")
             # load tSNE model object
             from modules.modeling import (load_model, transform_target, save_coordinates)
-            model = load_model(reference_file_name, use_joblib=False) #use_joblib=False, from_zip=False
+            model = load_model(reference_file_name, use_joblib=True) #use_joblib=False, from_zip=False
             print("loading model worked")
 
 
@@ -183,7 +183,7 @@ def main():
                                     symbol='diamond', size=3, opacity=0.5)
     else:
         figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=figure,
-                hover_name='PREFERRED_NAME', hover_data=hover_data_available, color='red', size=3, opacity=0.7)
+                hover_name='INCHIKEY', hover_data=hover_data_available, color='red', size=3, opacity=0.7)
         
     st.plotly_chart(figure, use_container_width=True)
     
