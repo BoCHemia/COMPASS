@@ -15,9 +15,11 @@ joblib==1.5.1
 jupyter_client==8.6.3
 jupyter_core==5.8.1
 kiwisolver==1.4.8
+kaleido==1.1.0
 llvmlite==0.44.0
 matplotlib==3.10.3
 matplotlib-inline==0.1.7
+# nbformat-5.10.4  # only needed for Jupyter Notebooks
 nest-asyncio==1.6.0
 numba==0.61.2
 numpy==2.2.6
@@ -30,6 +32,7 @@ platformdirs==4.3.8
 plotly==6.3.0
 prompt_toolkit==3.0.51
 psutil==7.0.0
+pubchempy==1.0.5
 pure_eval==0.2.3
 Pygments==2.19.2
 pynndescent==0.5.13
@@ -37,6 +40,7 @@ pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 pytz==2025.2
 # pywin32==311  # Only needed for Windows # Commented out for deploying in streamlit community
+pyyaml==6.0.2
 pyzmq==27.0.0
 rdkit==2025.3.6
 scikit-learn==1.7.0
@@ -50,4 +54,3 @@ tornado==6.5.1
 traitlets==5.14.3
 tzdata==2025.2
 wcwidth==0.2.13
-pyyaml==6.0.2

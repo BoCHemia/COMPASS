@@ -2,14 +2,14 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
-from openTSNE.tsne import TSNE
-# from openTSNE.sklearn import TSNE
+from openTSNE.sklearn import TSNE
+from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 import seaborn as sns
-from zipfile import ZipFile
 from modules.preprocessing import *
-from zipfile import ZipFile
+import zipfile
 import yaml
+import joblib
 
 ### Some comments:
 # - Xsmall is just a smaller subset of the training data to make some steps faster
@@ -21,12 +21,15 @@ import yaml
 # -----------------------------
 # utils? 
 # -----------------------------
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent 
+
 def ensure_dirs():
     """
     Ensure that the folders temp and output exist, and if not, create them
     """
-    os.makedirs(os.path.join("..", "temp"), exist_ok=True)
-    os.makedirs(os.path.join("..", "output"), exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_ROOT, "temp"), exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_ROOT, "output"), exist_ok=True)
 
 
 def save_pickle(obj, path):
@@ -47,6 +50,18 @@ def load_pickle(path):
     """
     with open(path, "rb") as f:
         return pickle.load(f)
+
+def unzip_and_load(path_to_zipfile):
+    """
+    Unzip and unpickle a zip file to load a tSNE  model
+    :param path_to_zipfile: Path to zip file
+    :return: tSNE model objcet
+    """
+    archive = zipfile.ZipFile(path_to_zipfile, 'r')
+    model_name_pkl = archive.infolist()[0]
+    model_pkl = archive.read(model_name_pkl)
+    model = pickle.loads(model_pkl)
+    return model
     
 def load_configs(params = 'tsne_params'):
     """
@@ -54,7 +69,7 @@ def load_configs(params = 'tsne_params'):
     :param params: name of file in config folder (without the .yaml)
     :return: dictionary of hyperparameters to be used for tSNE training
     """
-    with open(os.path.join('..', 'config', params+'.yaml'), 'r') as file:
+    with open(os.path.join(PROJECT_ROOT, 'config', params+'.yaml'), 'r') as file:
         hyperparameters = yaml.safe_load(file)
     return hyperparameters['hyperparameters']
 
@@ -62,7 +77,7 @@ def load_configs(params = 'tsne_params'):
 # Modeling
 # -----------------------------
 
-def fit_tsne_model(X):
+def fit_tsne_model(df_fingerprints):
     """
     Fits the TSNE model on the boolean fingerprint array (X) and saves the fitted embedding object.
     If the pickled object exists, it is loaded instead of training again.
@@ -74,71 +89,119 @@ def fit_tsne_model(X):
     # Load hyperparameters of t-SNE from config
     hyperparameters_dict = load_configs('tsne_params')
 
+    # Prepare boolean fingerprint array
+    df_fingerprints.dropna(inplace=True)
+    X = np.array(df_fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+
     # Training
     print('--> Start training')
     tsne = TSNE(**hyperparameters_dict)
-    model = tsne.fit(X)
-    coordinates = pd.DataFrame(model.transform(X))
-    # coordinates, model = tsne.fit_transform(X)
-    print('Finished training')
-    return model, coordinates
+    coordinates = pd.DataFrame(tsne.fit_transform(X), columns=['TSNE1', 'TSNE2'])
+    coordinates.index = df_fingerprints['INCHIKEY']
 
-def save_model(model, filename):
+    print('Finished training')
+    return tsne, coordinates
+
+def save_model(model, file_name, pickle=True, zip=True, use_joblib=False):
     """
     Save model as pickle to temp and as zipped pickle to output
-    @param model: trained tSNE model
-    @param filename: name tag of the original data file (e.g. for 'data_market.csv' the filename would be 'data_market')
+    :param model: trained tSNE model
+    :param file_name: name tag of the original data file (e.g. for 'data_market.csv' the file_name would be 'data_market')
+    :param pickle: save as pickle file, True by default
+    :param zip: compress to zip file, True by default
+    :param joblib: save as joblib file, False by default. If joblib is true, no pickle file will be generated
     """
     ensure_dirs()
-    model_path = os.path.join("..", "temp", filename + '_trained_tSNE.pkl')
-    model_path_zip = os.path.join("..", "output", filename + '_trained_tSNE.zip')
+
 
     # Saving trained tSNE object to temp folder
-    print("--> Pickle tSNE object")
-    save_pickle(model, model_path)
+    if use_joblib:
+        model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.zlib')
+        print("--> Joblib tSNE object")
+        joblib.dump(model, model_path, compress=5)
+        print(f"Saved fitted tSNE embedding to {model_path}")
+
+    elif pickle:
+        model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.pkl')
+        print("--> Pickle tSNE object")
+        save_pickle(model, model_path)
+        print(f"Saved fitted tSNE embedding to {model_path}")
+
+        # Saving zipped trained tSNE object to output folder
+        if zip:
+            model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
+            print('--> Zip tSNE object')
+            with zipfile.ZipFile(model_path_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
+                zipf.write(model_path)
+            print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
+
+def save_surrogate_model(model1, model2, file_name):
+    """
+    Save model as pickle to temp and as zipped pickle to output
+    :param model: trained tSNE model
+    :param file_name: name tag of the original data file (e.g. for 'data_market.csv' the file_name would be 'data_market')
+    """
+    ensure_dirs()
+
+    # Saving trained tSNE object to temp folder
+    model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_surrogate.zlib')
+    print("--> Joblib surrogate models object")
+    joblib.dump((model1, model2), model_path, compress=5)
     print(f"Saved fitted tSNE embedding to {model_path}")
 
-    # Saving zipped trained tSNE object to output folder
-    print('--> Zip tSNE object')
-    with ZipFile(model_path_zip, "w") as zipf:
-        zipf.write(model_path)
-    print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
+def load_surrogate_model(file_name):
+    print("--> Loading surrogate model")
+    model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_surrogate.zlib')
+    model1, model2 = joblib.load(filename=model_path)
+    return model1, model2
 
-def save_coordinates(coordinates, filename, inchikeys = None):
+
+
+def save_coordinates(coordinates, folder_name, file_name, reference_data=""):
     """
-    Save coordinates to csv file with the columns TSNE1 and TSNE2
+    Save coordinates to output file in data folder (data/[folder_name]/output_[file_name].csv)
 
-     #todo: check for consistency - ideally we would alsways get the same output here for visualization
-
-    :param coordinates: coordinates as received from model fitting
-    :param filename: name tag of the original data file (e.g. for 'data_market.csv')
-    :param inchikeys: optional - list of inchikeys, for example from original data file
+    :param coordinates: coordinates as received from model fitting with index as InChIKey
+    :param folder_name: folder name for saving the input file annotated with TSNE coordinates
+    :param file_name: name tag of the original data file (e.g. for 'data_market.csv')
     """
-    coordinates_path = os.path.join("..", "temp", filename + '_coordinates_tSNE.csv')
-    # coordinates.columns = ['TSNE1', 'TSNE2']
-    if inchikeys:
-        coordinates.index = inchikeys
-    coordinates.to_csv(coordinates_path, index=True)
+    # load input df
+    input_df_path = os.path.join(PROJECT_ROOT, "data", folder_name, "input_" + file_name + ".csv")
+    df = pd.read_csv(input_df_path)
+    df_coordinates = df.merge(coordinates, on='INCHIKEY', how='left')
 
-def load_coordinates(filename):
-    coordinates_path = os.path.join("..", "temp", filename + '_coordinates_tSNE.csv')
+    if reference_data:
+        file_name += "_on_" + reference_data
+    # save df, annotated with TSNE coordinates
+    output_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
+    df_coordinates.to_csv(output_path, index=True)
+    print(f"Saved coordinates to {output_path}")
+
+    
+def load_coordinates(folder_name, file_name, reference_data=""):
+    if reference_data:
+        file_name += f'_on_{reference_data}'
+    coordinates_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
     coordinates = pd.read_csv(coordinates_path)
+    print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
-def load_model(filename, from_zip = False):
+def load_model(file_name, from_zip = False, use_joblib=False):
     """
     Load model from pickle file (default) or from zip file (not implemented)
-    :param filename: name tag of the original data file (e.g. 'data_market' for 'data_market.csv')
+    :param file_name: name tag of the original data file (e.g. 'data_market' for 'data_market.csv')
     :param from_zip: Load from zip file #todo implement this option
     :return: model object
     """
-    if from_zip:
-        model_path_zip = os.path.join("..", "output", filename + '_trained_tSNE.zip')
-        model_name = os.path.join("..", "temp", filename + '_trained_tSNE.pkl')
-        archive = ZipFile(model_path_zip, 'r')
-        model = archive.read(model_name) # todo: this does not work - it says it's a possible zip bomb (:
+    print("--> Loading model")
+    if use_joblib:
+        model_path_zip = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.zlib')
+        model = joblib.load(filename=model_path_zip)
+    elif from_zip:
+        model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
+        model = unzip_and_load(model_path_zip)
     else:
-        model_path = os.path.join("..", "temp", filename + '_trained_tSNE.pkl')
+        model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_tSNE.pkl')
         model = load_pickle(model_path)
     return model
 
@@ -181,71 +244,45 @@ def transform_target(embedding_train,           # todo: code from José - I simp
     print(target_chemicals_space)
     return embedding_target_chemicals, target_chemicals_space
 
-def transform_target(model, target_X):
-    coordinates_target = model.transform(target_X)
+def transform_target(model, fingerprints):
+    # Prepare boolean fingerprint array
+    print("--> Calculating mapping ")
+    fingerprints.dropna(inplace=True)
+    X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+    coordinates_target = model.transform(X)
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
+    coordinates_df.index = fingerprints['INCHIKEY']
     return coordinates_df
 
-# -----------------------------
-# Visualization
-# -----------------------------
-def plot_embedding(target_chemicals_space,
-                   fig_path='output/target_space_static_test.tif'):
-    """
-    Plots the simple scatter as in the original script and saves it.
-    Skips re-plot if the file already exists.
-    """
-    if os.path.exists(fig_path):
-        print(f"[cache] Figure already exists at {fig_path}; skipping re-plot.")
-        return
+def build_surrogate_model(folder_name, file_name, df_fingerprints):
+    print('--> build surrogate model')
+    # fingerprints
+    df_fingerprints.dropna(inplace=True)
+    df_fingerprints.drop_duplicates(subset=['INCHIKEY'], inplace=True)
 
-    ax = sns.scatterplot(data=target_chemicals_space, x='tsne_v1', y='tsne_v2',
-                         s=1, alpha=1, edgecolor='black')
-    ax.legend(loc='upper left', bbox_to_anchor=(1.00, 0.75), ncol=1)
-    plt.axis('off')
-    plt.savefig(fig_path, bbox_inches='tight', dpi=1800)
-    plt.close()
-    print(f"[out] Saved figure to {fig_path}")
+    # target variables: TSNE coordinates
+    df = load_coordinates(folder_name, file_name)
+    df.drop_duplicates(subset=['INCHIKEY'], inplace = True)
+    Y1 = df['TSNE1']
+    Y2 = df['TSNE2']
 
-def plot_embedding(coordinates, filename, format = '.tif'):
-    """
-    Plot a coordinates file #todo define what we really need here
-    :param coordinates: coordinates dataframe
-    :param filename: name tag
-    :param format: output format of the plot (e.g., '.png', '.pdf'). '.tif' by default
-    """
-    print(f"--> Plotting {filename}")
-    ax = sns.scatterplot(data=coordinates, x='TSNE1', y='TSNE2',
-                         s=1, alpha=1, edgecolor='black')
-    fig_path = os.path.join("..", "output", filename + "plot" + format)
-    ax.legend(loc='upper left', bbox_to_anchor=(1.00, 0.75), ncol=1)
-    plt.axis('off')
-    plt.savefig(fig_path, bbox_inches='tight', dpi=1800)
-    plt.close()
-    print(f"[out] Saved figure to {fig_path}")
+    # Train random forests - takes ~40mins/model
+    X = np.array(df_fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+    print("Fitting model 1...")
+    model_1 = RandomForestRegressor(n_estimators=100, random_state=42).fit(X, Y1)
+    print("Fitting model 2...")
+    model_2 = RandomForestRegressor(n_estimators=100, random_state=42).fit(X, Y2)
+    return model_1, model_2
 
-
-# -----------------------------
-# Main
-# -----------------------------
-def main():
-    ensure_dirs()
-
-    # 1) Load training set -> boolean array (subset) with caching
-    X = load_training_array()
-
-    # 2) Fit (or load) TSNE model
-    embedding_train, _ = fit_tsne_model(X) # _ catches the coordinates
-
-    # 3) Load target dataset fingerprints (bool) with caching
-    target_space_fingerprints = load_target_space()
-
-    # 4) Transform target fingerprints into TSNE space (cache npy + csv)
-    _, target_chemicals_space = transform_target(embedding_train, target_space_fingerprints)
-
-    # 5) Plot and save figure (skip if already there)
-    plot_embedding(target_chemicals_space)
-
-
-if __name__ == "__main__":
-    main()
+def transform_target_surrogate(model1, model2, fingerprints):
+    # Prepare boolean fingerprint array
+    print("Predict TSNE coordinates with surrogate model")
+    fingerprints.dropna(inplace=True)
+    X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+    tsne1 = model1.predict(X)
+    tsne2 = model2.predict(X)
+    coordinates_df = pd.DataFrame()
+    coordinates_df['TSNE1'] = tsne1.T
+    coordinates_df['TSNE2'] = tsne2.T
+    coordinates_df.index = fingerprints['INCHIKEY']
+    return coordinates_df

@@ -1,28 +1,22 @@
-import pandas as pd
-import numpy as np
-import os
 from modules.modeling import *
 from modules.preprocessing import *
 
 # load tSNE model object
-reference_data_name = "data_market"
+reference_data_name = "coconut"
 model = load_model(reference_data_name, from_zip=False)
 
 # load data to plot
-new_data_name = 'pfas_data'
-new_fingerprints = preprocess_data(new_data_name)
-save_fingerprints(new_fingerprints, new_data_name)
-# load_fingerprints(new_data_name)
+folder_name = "DrugBank"
+file_name = 'drugbank_5.1.13_partial' # enter here the name of the input data set to transform
 
-# load X
-X = load_training_array(new_data_name)
+new_df = load_input_file(file_name, folder_name=folder_name)
+new_fingerprints = preprocess_data(new_df)
+save_fingerprints(fingerprints=new_fingerprints, file_name=file_name)
+# new_fingerprints = load_fingerprints(filename=new_data_name)
 
 # transform
-coordinates = transform_target(model, X)
-save_coordinates(coordinates, new_data_name)
-
-# load coordinates directly
-# coordinates = load_coordinates(new_data_name)
-
-# plot
-plot_embedding(coordinates, new_data_name)
+coordinates = transform_target(model, new_fingerprints)
+save_coordinates(coordinates=coordinates,
+                 folder_name=folder_name,
+                 file_name=file_name,
+                 reference_data=reference_data_name)

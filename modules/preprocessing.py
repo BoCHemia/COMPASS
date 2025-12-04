@@ -1,75 +1,259 @@
 import os
+import time
 import pickle
 import numpy as np
 import pandas as pd
+from pathlib import Path
+import pubchempy as pcp
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.MolStandardize import rdMolStandardize
+import pubchempy as pcp
+import time
 
 
+# set project root
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # -----------------------------
 # Data and model loading
 # -----------------------------
 
-def load_training_array(filename, use_subset=False, subset_n=6000):
-
+def preprocess_data(df, radius=2, fpSize=1024, **kwargs):
     """
-    Loads the von Borries training fingerprints, converts to boolean,
-    optionally subsets, and caches the boolean array.
-
-    """
-    # load fingerprints
-    fingerprints_file = os.path.join("..", "data", "fingerprints", filename + '_fingerprints.csv')
-    fingerprints = pd.read_csv(fingerprints_file)
-
-    # ensure that there is not NA in the data
-    assert fingerprints.isna().sum().sum() == 0, "There are NaNs in the data"
-    print("Loaded fingerprints data size:", fingerprints.shape)
-
-    # obtain training data
-    X = np.array(fingerprints).astype('bool')  # full data
-    X = X[:subset_n] if use_subset else X
-    print("Size of training array:", X.size)
-
-    return X
-
-def preprocess_data(filename):
-    """
-    Wrapper function to load dataframe, standardize SMILES, and calculate fingerprints
-    :param filename: name tag
+    Wrapper function to standardize SMILES, add InChIKeys and calculate fingerprints
+    :param df: input dataframe loaded with load_input_file() or provided as user input
+    :**kwargs: fingerprint calculation parameters in addition to radius and fpSize (defaults provided)
     :return: pandas DataFrame of fingerprints
     """
-    input_df_path = os.path.join("..", "data", "input", filename + ".csv")
-    df = pd.read_csv(input_df_path)
-    df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
-    df_fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES'))
+    print("Preprocessing data ...")
+    df.fillna({'SMILES': ''}, inplace=True) # replace nan SMILES with empty strings
+    df = standardize_structures(df) # add standardized SMILES and INCHIKEY columns
+
+    fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=radius, fpSize=fpSize, **kwargs))
+    df_fingerprints = pd.concat([df["INCHIKEY"], fingerprints], axis=1)
+    print("Data preprocessed (standardized SMILES, INCHIKEY) and fingerprints calculated.")
     return df_fingerprints
 
-def save_fingerprints(fingerprints, filename):
+
+def standardize_structures(df):
+    if not 'standardized SMILES' in df.columns:
+        df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
+    if not "INCHIKEY" in df.columns:
+        df['INCHIKEY'] = get_inchikeys(df['standardized SMILES'])
+    return df
+
+
+def load_input_file(file_name, folder_name):
+    """
+    Load input file for mapping to reference space
+    :param file_name: database name tag
+    :param folder_name: "input" database folder name
+    """
+    print("Loading input file...")
+    raw_input_path = os.path.join(PROJECT_ROOT, "data", folder_name, f"input_{file_name}.csv")
+    df = pd.read_csv(raw_input_path)
+    assert 'SMILES' in df.columns, f"PROBLEM: missing SMILES column in input file under {raw_input_path}"
+
+    return df
+
+
+def save_fingerprints(fingerprints, file_name):
     """
     Save fingerprints to .csv file
     :param fingerprints: fingerprints dataframe
-    :param filename: name tag
+    :param file_name: name tag
     """
-    fingerprints_df_path = os.path.join("..", "data", "fingerprints", filename + "_fingerprints.csv")
-    fingerprints.to_csv(fingerprints_df_path)
+    out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
+    os.makedirs(out_dir, exist_ok=True)
+
+    fingerprints_df_path = os.path.join(out_dir, file_name + "_fingerprints.csv")
+    fingerprints.to_csv(fingerprints_df_path, index=False)
     print("Fingerprints saved to ", fingerprints_df_path)
 
-def load_fingerprints(filename):
+
+def load_fingerprints(file_name):
     """
 
-    :param filename:
+    :param file_name:
     :return:
     """
-    fingerprints_df_path = os.path.join("..", "data", "fingerprints", filename + "_fingerprints.csv")
+    fingerprints_df_path = os.path.join(PROJECT_ROOT, "temp", "fingerprints", file_name + "_fingerprints.csv")
     fingerprints = pd.read_csv(fingerprints_df_path)
     return fingerprints
 
 # -----------------------------
 # Structures and features
 # -----------------------------
+
+
+def get_pubchem_data(df, col_inchikey, col_cas, col_name, output_file, resume=True):
+    """ Fetches IUPAC name, SMILES, and InChI strings from PubChem for a list of chemicals 
+    provided in dataframe with their InChIKeys, CAS numbers and chemical names, saving regularly to avoid data loss.
+    Allows to resume from last saved compound.
+
+    Inputs
+    ----------
+    df : pandas dataframe, mandatory
+        Dataframe containing a list of chemicals with columns for CAS numbers and chemical names
+    col_inchikey: str, mandatory
+        column name containing InChI keys
+    col_cas: str, mandatory
+        column name containing CAS numbers
+    col_name: str, mandatory
+        column name containing chemical names
+    output_file: str, mandatory
+        path to output csv file
+    resume: bool, optional, default=False
+        if True and output_file exists, resume from last saved compound
+
+    Outputs
+    ----------
+    df_out: pandas dataframe
+        dataframe with CAS, chemical name, foundby (CAS or name), PubChem ID (CID), IUPAC name, 
+        isomeric and caonical SMILES, InChI key and InChI strings
+    """
+
+    if resume & os.path.exists(output_file):
+        df_out = pd.read_csv(output_file)
+        done_set = set(df_out[col_inchikey])
+        print(f"Resuming: {len(done_set)} compounds already processed.")
+    else:
+        df_out = pd.DataFrame(columns=[col_cas, col_name, col_inchikey, 'Found by', 'CID', 'IUPAC', 'InChI', 'SMILES'])
+        done_set = set()
+
+
+    for i, (cas, name, inchikey) in enumerate(zip(df[col_cas], df[col_name], df[col_inchikey])):
+
+        if inchikey in done_set:  
+            continue
+
+        compound_data = None
+        foundby = None
+
+        try:
+            results = pcp.get_compounds(inchikey, 'inchikey')
+            if results:
+                compound_data, foundby = results[0], 'InChIKey'
+        except:
+            pass
+
+        if compound_data is None:
+            try:
+                results = pcp.get_compounds(cas, 'name')
+                if results:
+                    compound_data, foundby = results[0], 'CAS'
+            except:
+                pass
+
+        if compound_data is None:
+            try:
+                results = pcp.get_compounds(name, 'name')
+                if results:
+                    compound_data, foundby = results[0], 'name'
+            except:
+                pass
+
+        if compound_data:
+            row = pd.DataFrame([[cas, name, inchikey, foundby,
+                                compound_data.cid,
+                                compound_data.iupac_name,
+                                compound_data.inchi,
+                                compound_data.smiles]],
+                            columns=df_out.columns)
+        else:
+            row = pd.DataFrame([[cas, name, inchikey, "not found", None, None, None, None]],
+                            columns=df_out.columns)
+
+        df_out = pd.concat([df_out, row], ignore_index=True)
+
+        if i % 50 == 0:
+            df_out.to_csv(output_file, index=False)
+            print(f"Progress saved at index {i} ({cas}, {name})")
+
+        time.sleep(0.2)
+
+    df_out.to_csv(output_file, index=False)
+
+    return df_out
+
+
+# I renamed this function  with "_inchi" as it had the exact same name as the function above (Kerstin)
+def get_pubchem_data_inchi(df, col_inchikey, output_file, resume=False):
+    """ Fetches IUPAC names, names, and CID from PubChem for a list of chemicals
+    provided in dataframe with ONLY their InChIKeys, saving regularly to avoid data loss.
+    Allows to resume from last saved compound.
+
+    Inputs
+    ----------
+    df : pandas dataframe, mandatory
+        Dataframe containing a list of chemicals with columns for CAS numbers and chemical names
+    col_inchikey: str, mandatory
+        column name containing InChI keys
+    output_file: str, mandatory
+        path to output csv file
+    resume: bool, optional, default=False
+        if True and output_file exists, resume from last saved compound
+
+    Outputs
+    ----------
+    df_out: pandas dataframe
+        dataframe with CAS, chemical name,  PubChem ID (CID), IUPAC name, synonym
+    """
+
+    if resume & os.path.exists(output_file):
+        df_out = pd.read_csv(output_file)
+        done_set = set(df_out[col_inchikey])
+        print(f"Resuming: {len(done_set)} compounds already processed.")
+    else:
+        df_out = pd.DataFrame(columns=[col_inchikey, 'CID', 'IUPAC', 'PREFERRED_NAME'])
+        done_set = set()
+
+
+    for i, inchikey in enumerate(df[col_inchikey]):
+
+        if inchikey in done_set:
+            continue
+
+        compound_data = None
+
+        try:
+            results = pcp.get_compounds(inchikey, 'inchikey')
+            if results:
+                compound_data = results[0]
+        except:
+            pass
+
+        if compound_data:
+            # get common name from synonyms
+            if len(compound_data.synonyms)>0:
+                compound_name = compound_data.synonyms[0] # assuming the first synonym is the best
+            else:
+                compound_name = compound_data.iupac_name
+
+            row = pd.DataFrame([[inchikey,
+                                compound_data.cid,
+                                compound_data.iupac_name,
+                                compound_name
+                                ]],
+                            columns=df_out.columns)
+        else:
+            row = pd.DataFrame([[inchikey, None, None, None]],
+                            columns=df_out.columns)
+
+        df_out = pd.concat([df_out, row], ignore_index=True)
+
+        if i % 50 == 0:
+            df_out.to_csv(output_file, index=False)
+            print(f"Progress saved at index {i} ({inchikey})")
+
+        time.sleep(0.2)
+
+    df_out.to_csv(output_file, index=False)
+
+    return df_out
+
 
 def myMolFromSmiles(smiles):
     """ Function to create mol object from SMILES performing partial sanitization when necessary
@@ -196,7 +380,7 @@ def standardize_smiles_df(df, col_smiles, **kwargs):
     col_smiles: string, mandatory
         The column name containing the SMILES
     **kwargs: optional
-        Pass in any arguments taken by rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect such as radius and nBits
+        Pass in any arguments taken by rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect such as radius and fpSize
 
     Outputs
     ----------
@@ -223,10 +407,14 @@ def calculate_descriptors_morgan(smiles, **kwargs):
     """
 
     mol = myMolFromSmiles(smiles)
+
     gen = rdFingerprintGenerator.GetMorganGenerator(**kwargs)
     fp = gen.GetFingerprint(mol)
-    arr = np.zeros((fp.GetNumBits(),), dtype=bool)
+    arr = np.zeros((fp.GetNumBits(),), dtype=float)
     DataStructs.ConvertToNumpyArray(fp, arr)
+
+    if (smiles=="") or (mol is None):
+        arr[:] = np.nan
 
     return arr
 
@@ -241,7 +429,7 @@ def calculate_descriptors_morgan_df(df, col_smiles, **kwargs):
     col_smiles: string, mandatory
         The column name containing the SMILES
     **kwargs: optional
-        Pass in any arguments taken by rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect such as radius and nBits
+        Pass in any arguments taken by rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect such as radius and fpSize
 
     Outputs
     ----------
@@ -250,3 +438,12 @@ def calculate_descriptors_morgan_df(df, col_smiles, **kwargs):
 
     d = df[col_smiles].apply(calculate_descriptors_morgan, **kwargs)
     return pd.DataFrame.from_records(d)
+
+def get_inchikeys(smiles_list):
+    #todo: add doc/error handling
+    output_list = []
+    for smiles in smiles_list:
+        mol = Chem.MolFromSmiles(smiles)
+        inchikey = Chem.MolToInchiKey(mol)
+        output_list.append(inchikey)
+    return output_list
