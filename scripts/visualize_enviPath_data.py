@@ -1,6 +1,5 @@
 from enviPath_python import enviPath
 from modules.modeling import *
-from modules.preprocessing import *
 from modules.visualizing import *
 from tqdm import tqdm
 from getpass import getpass
@@ -61,19 +60,19 @@ def load_enviPath_data(from_csv = False, use_beta = False):
 new_df = load_enviPath_data(from_csv=True)
 
 # preprocess
-# new_fingerprints = preprocess_data(new_df)
-# save_fingerprints(fingerprints=new_fingerprints, file_name=file_name)
+new_fingerprints = preprocess_data(new_df)
+save_fingerprints(fingerprints=new_fingerprints, file_name=file_name)
 
 # transform on ZeroPM
 reference_folder = 'ZeroPM'
 reference_data_name =  'zeropm'
 
 # model = load_model(reference_data_name, from_zip=False)
-# coordinates = transform_target(model, new_fingerprints)
-# save_coordinates(coordinates=coordinates,
-#                  folder_name=folder_name,
-#                  file_name=file_name,
-#                  reference_data=reference_data_name)
+coordinates = transform_target(model, new_fingerprints)
+save_coordinates(coordinates=coordinates,
+                 folder_name=folder_name,
+                 file_name=file_name,
+                 reference_data=reference_data_name)
 coordinates = load_coordinates(folder_name, file_name, reference_data=reference_data_name) #enviPath coordinates
 
 # visualize with zeropm reference space
