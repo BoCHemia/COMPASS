@@ -33,7 +33,9 @@ def load_enviPath_data(from_csv = False, use_beta = False):
     soil = eP.get_package(f'https://{tag}envipath.org/package/5882df9c-dae1-4d80-a40e-db4724271456')
     sludge = eP.get_package(f'https://{tag}envipath.org/package/521c547a-fd2a-491c-ad5b-7eaa1577fb65')
     sediment = eP.get_package(f'https://{tag}envipath.org/package/f05e38d8-e9b4-4c3e-b0d8-9ab29966eccf')
-    package_list = [bbd, soil, sludge, sediment]
+    pfas = eP.get_package(f'https://{tag}envipath.org/package/d2cfb5af-4ea0-4375-9a48-f2e776e44636')
+    package_list = [bbd, soil, sludge, sediment, pfas]
+    # package_list = [pfas]
 
     # download all data
     D = {}
@@ -57,7 +59,7 @@ def load_enviPath_data(from_csv = False, use_beta = False):
 
 ############ Main #################
 # load enviPath data
-new_df = load_enviPath_data(from_csv=True)
+new_df = load_enviPath_data(from_csv=False)
 
 # preprocess
 new_fingerprints = preprocess_data(new_df)
@@ -67,7 +69,11 @@ save_fingerprints(fingerprints=new_fingerprints, file_name=file_name)
 reference_folder = 'ZeroPM'
 reference_data_name =  'zeropm'
 
-# model = load_model(reference_data_name, from_zip=False)
+# # transform on NIST
+# reference_folder = "PFAS"
+# reference_data_name = "pfas_nist"
+
+model = load_model(reference_data_name, from_zip=False)
 coordinates = transform_target(model, new_fingerprints)
 save_coordinates(coordinates=coordinates,
                  folder_name=folder_name,
@@ -77,7 +83,7 @@ coordinates = load_coordinates(folder_name, file_name, reference_data=reference_
 
 # visualize with zeropm reference space
 eP_colors = {'EAWAG-BBD':'#1681AC', 'EAWAG-SOIL':'#392C20', 'EAWAG-SLUDGE': '#8C7938', 'EAWAG-SEDIMENT':'#008A88',
-             # 'enviPath-PFAS': '#2C653C',
+             'enviPath-PFAS': '#2C653C',
              }
 reference_coordinates = load_coordinates(reference_folder, reference_data_name)
 figure = plot_chemical_space(reference_coordinates, nametag='ZeroPM reference space', hover_name='PREFERRED_NAME',
