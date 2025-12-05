@@ -118,7 +118,7 @@ def plot_chemical_space(df, nametag = '', map_on=None,
     # merge data
     if map_on is not None:
         fig = map_on
-        merged_fig = go.Figure(data=fig.data + input_fig.data)
+        merged_fig = go.Figure(data=fig.data + input_fig.data, layout=input_fig.layout)
     else:
         merged_fig = input_fig
 
