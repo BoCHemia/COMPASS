@@ -20,181 +20,238 @@ def main():
                 By selecting a reference space (e.g., marketed chemicals, pharmaceuticals, PFAS), 
                 you can locate and explore your own substances in relation to known chemical landscapes.
                 """)
+    
+    @st.cache_data
+    def cache_df(df):
+        # IMPORTANT: Cache the conversion to prevent computation on every rerun
+        return df.to_csv().encode("utf-8")
+    example_csv = pd.read_csv(os.path.join('app_data', 'example_target_chemicals.csv'))
+    csv = cache_df(example_csv)
+
+    st.sidebar.download_button(
+        label="Download example file",
+        data=csv,
+        file_name="test_space.csv",
+        mime="text/csv",
+    )
+
 
     # Dropdown menu for selecting the reference model
-    # available_ref_spaces = ['DrugBank', 'PFAS', 'ZeroPM'] 
     available_ref_spaces_dict = {'DrugBank': ['5.1.13', '5.1.13_partial'],
                                  'PFAS': ['nist'],
                                  'ZeroPM': None,
                                  'Coconut': None}
-
-    reference_space = st.selectbox('Choose reference space',
-                                   placeholder='Choose an option',
-                                   index=None,
-                                   options=available_ref_spaces_dict.keys())
     
-    print(reference_space)
-    if reference_space:
-        reference_folder_name = str(reference_space)
-        reference_file_name = str.lower(reference_space)
-
-    if available_ref_spaces_dict.get(reference_space): 
-        reference_space_version = st.selectbox('Choose version',
-                                            placeholder='Choose an option',
-                                            index=None,
-                                            options=available_ref_spaces_dict.get(reference_space))
-        reference_file_name = str.lower(reference_space + "_" + reference_space_version)
-
-
-
-    target_space = st.selectbox('Choose which chemical space to map into the reference',
+    # 1st container: Defining the reference space
+    with st.container(): # I am using this to prevent the rest of the code from running until the form is submitted
+        st.markdown("### Step 1: Configure the reference chemical space for mapping")  # I am still not sure about the wording here
+    # Dropdown menu for selecting the reference model
+    
+        reference_space = st.selectbox('Choose reference space',
                                 placeholder='Choose an option',
                                 index=None,
-                                options=list(available_ref_spaces_dict.keys()) + ['my_own_substances'])
-    if target_space:
-        target_folder_name = str(target_space)
-        target_file_name = str.lower(target_space)
+                                options=available_ref_spaces_dict.keys(),
+                                key='ref_space')
+        if reference_space:
+            reference_folder_name = str(reference_space)
+            reference_file_name = str.lower(reference_space)
 
-   # Define target variables
+        ref_versions = available_ref_spaces_dict.get(reference_space)
+        if ref_versions:
+            reference_space_version = st.selectbox('Choose version',
+                                                placeholder='Choose an option',
+                                                index=None,
+                                                options=ref_versions,
+                                                key='ref_sapce_version')
+            if reference_space_version:
+                reference_file_name = str.lower(reference_space + "_" + reference_space_version)
 
-    if available_ref_spaces_dict.get(target_space): 
-        target_space_version = st.selectbox('Choose version',
-                                            placeholder='Choose an option',
-                                            index=None,
-                                            options=available_ref_spaces_dict.get(target_space))
-        target_file_name = str.lower(target_space + "_" + target_space_version)
+    
+    # 2nd container: Defining the target space
+    with st.container():
+        st.markdown("### Step 2: Select your target chemical substances of interest")
+        target_space = st.selectbox('Choose which chemical space to map into the reference',
+                                placeholder='Choose an option',
+                                index=None,
+                                options=list(available_ref_spaces_dict.keys()) + ['my_own_substances'],
+                                key='target_space')
 
+        if target_space:
+            target_folder_name = str(target_space)
+            target_file_name = str.lower(target_space)
+
+
+        target_versions = available_ref_spaces_dict.get(target_space)
+        if target_versions: 
+            target_space_version = st.selectbox('Choose version',
+                                                placeholder='Choose an option',
+                                                index=None,
+                                                options=target_versions,
+                                                key='target_space_version_selectbox')
+            if target_space_version:
+                target_file_name = str.lower(target_space + "_" + target_space_version)
+
+
+        # Section to define the target when the user selects 'my_own_substances'
+        # Upload CSV file
+        if target_space == 'my_own_substances':
+            user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
+            if user_target_chemicals:
+                target_file_name = 'user_target_chemicals' # placeholder to allow user specified naming later
+                target_folder_name = '_USER'
+
+
+                # Load the uploaded data, save to data/_USER folder
+                user_target_chemicals = pd.read_csv(user_target_chemicals)
+                user_target_chemicals.to_csv(os.path.join('data', '_USER', target_file_name + '.csv'), index=False)
+
+                # Show the input data
+                st.write("Uploaded data:", user_target_chemicals)
+            else:
+                st.info("Please upload a CSV file to proceed.")
+                st.stop()
         
+
+    # Submit button to proceed when all necessary information has been provided
+    with st.form("config_form", clear_on_submit=False, border=False): 
+        submit_message = "Get chemical space mapping"
+        submitted = st.form_submit_button(submit_message)  # The form and the button defaults are so ugly, but we can change it later
+
+    if not submitted:
+        st.write("Please press the ''{}''  button to proceed.".format(submit_message))
+        st.stop()
+
+
+    # One more section to check if everything is set up correctly
+    # If things are missing we will catch them here and we can inform the user
+
+    missing = []
+    if reference_space is None:
+        missing.append("reference space")
+    if (available_ref_spaces_dict.get(reference_space)) and (reference_space_version is None):
+        missing.append("reference version")
+    if target_space is None:
+        missing.append("target space")
+    if (available_ref_spaces_dict.get(target_space)) and (target_space_version is None):
+        missing.append("target version")
+    if target_space == "my_own_substances" and user_target_chemicals is None:
+        missing.append("CSV file with target chemicals")
+
+    if missing:
+        st.warning("Please provide: " + ", ".join(missing))
+        st.stop()
+
+
+    st.write("You have selected to map {} into {}".format(target_space, reference_space))  
+
+    if not develop:
+        progress_bar = st.progress(0)
+        from modules.modeling import preprocess_data, save_user_file, save_fingerprints
+
+        progress_bar.progress(5)
+        st.info("User data is preprocessed and saved in user folder")
+        st.info("Calculating fingerprints")
+        # new_df = load_input_file(file_name, foldername=folder_name)
+        new_df = user_target_chemicals
+        # todo: This is weird. I would like to have preprocess_data() and get_fingerprints() functions
+        new_fingerprints = preprocess_data(new_df)
+        save_user_file(user_dataframe=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name )
+        save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
+        progress_bar.progress(25)
+        st.info("Fingerprints have been calculated and saved")
+
+        print("Next the trained reference model is loaded; this takes 1-3 mins")
+        # load tSNE model object
+        from modules.modeling import (load_model, transform_target, save_coordinates)
+        model = load_model(reference_file_name, use_joblib=True) #use_joblib=False, from_zip=False
+        
+        st.info("loading model worked")
+        progress_bar.progress(75)
+
+
+        # transform
+        st.info("Next the coordinates of the user target chemicals are calculated using the loaded reference model")
+        target_coordinates = transform_target(model, new_fingerprints)
+        progress_bar.progress(95)
+        st.info("getting the new coordinates worked ant they are being saved now")
+        save_coordinates(coordinates=target_coordinates,
+                            folder_name=target_folder_name,
+                            file_name=target_file_name,
+                            reference_name=reference_file_name)
+        
+   
     else:
-        st.write("Please choose the reference chemical space.") 
+        pass
 
-
-    # Upload CSV file
-    if target_space == 'my_own_substances':
-        user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
-        target_file_name = 'user_target_chemicals' # placeholder to allow user specified naming later
-        target_folder_name = '_USER'
-
-        @st.cache_data
-        def convert_df(df):
-            # IMPORTANT: Cache the conversion to prevent computation on every rerun
-            return df.to_csv().encode("utf-8")
-        example_csv = pd.read_csv(os.path.join('app_data', 'example_target_chemicals.csv'))
-        csv = convert_df(example_csv)
-
-        st.sidebar.download_button(
-            label="Download example file",
-            data=csv,
-            file_name="test_space.csv",
-            mime="text/csv",
-        )
-
-        # Load the uploaded data, save to data/_USER folder
-        user_target_chemicals = pd.read_csv(user_target_chemicals)
-        user_target_chemicals.to_csv(os.path.join('data', '_USER', target_file_name + '.csv'), index=False)
-
-        # Show the input data
-        st.write("Uploaded data:", user_target_chemicals)
-
-        if not develop:
-
-            from modules.modeling import preprocess_data, save_user_file, save_fingerprints
-
-            print("Next the user data is preprocessed and saved in user folder")
-            # new_df = load_input_file(file_name, foldername=folder_name)
-            new_df = user_target_chemicals
-            # todo: This is weird. I would like to have preprocess_data() and get_fingerprints() functions
-            new_fingerprints = preprocess_data(new_df)
-            save_user_file(user_dataframe=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name )
-            save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
-
-            print("Calculating fingerprints and saving them worked")
-
-            print("Next the trained reference model is loaded; this takes 1-3 mins")
-            # load tSNE model object
-            from modules.modeling import (load_model, transform_target, save_coordinates)
-            model = load_model(reference_file_name, use_joblib=True) #use_joblib=False, from_zip=False
-            print("loading model worked")
-
-
-            # transform
-            print("Next the coordinates of the user target chemicals are calculated using the loaded reference model")
-            target_coordinates = transform_target(model, new_fingerprints)
-            print("getting the new coordinates of the user target chemicals worked")
-            save_coordinates(coordinates=target_coordinates,
-                                folder_name=target_folder_name,
-                                file_name=target_file_name,
-                                reference_name=reference_file_name)
-            
-        else:
-            pass
-
-    elif target_space==None or reference_space==None:
-        st.write("Please choose the reference and target chemical spaces.")
-        return
-
-    else:
-        st.write("You have selected to map {} into {}".format(target_space, reference_space))   
     
     from modules.modeling import load_coordinates
     from modules.visualizing import plot_chemical_space # chemical_space_plot_grey, map_input_data
 
     
-    print('Project substances')
+    st.write('Project substances')
+    project_progress_bar = st.progress(0)
+    
     with st.spinner("Projecting your substances of interest", show_time=True):
         time.sleep(3)
-
-    ###### Plot 1: Plot user target chemicals on reference space #####
-    # load reference coordinates
-
-
-    reference_coordinates = load_coordinates(reference_folder_name, reference_file_name)
-    print("loading reference coordinates worked")
-    target_coordinates = load_coordinates(target_folder_name,
-                                            target_file_name,
-                                            reference_data=reference_file_name)
-    print("loading target coordinates worked")
-
-    # For now let's suppose that the user uploads the coordinates directly
-    # In reality the usser-provided-file will be preprocess and transformed. 
-    # new_coordinates = users_target_chemicals
-    # input_file = 'user_chemicals'
-    # Show the coordinates data
-    # st.write("Coordinates data:", coordinates_df)
-    reference_data_name = str(reference_space)
-    # fig_grey = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
-    #                     hover_name='INCHIKEY',  hover_data=['INCHIKEY'], opacity=0.8)
-    # figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=fig_grey,
-    #             hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'PREFERRED_NAME'],
-    #             color='red', opacity=1)
-    
-    hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
-    hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
-
-    figure = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
-                                 hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available)
-    
-    hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
-    hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
-
-    if 'Superclass' in hover_data_available:
-        figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=figure,
-                                    hover_name='PREFERRED_NAME', hover_data=hover_data_available,
-                                    column_for_color_map='Superclass', color_type='discrete', palette="Alphabet",
-                                    symbol='diamond', size=3, opacity=0.5)
-    else:
-        figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=figure,
-                hover_name='INCHIKEY', hover_data=hover_data_available, color='red', size=3, opacity=0.7)
+        project_progress_bar.progress(10)
         
-    st.plotly_chart(figure, use_container_width=True)
-    
-    #fig_color = chemical_space_plot()  @TODO: I will check later because we need to specify hue_column and so on
-    st.write("{} is the reference space shown in grey.".format(reference_space))
 
-    # Load the trained object
-    # Transform the user to the reference space of interest. 
+        
+        ###### Plot 1: Plot user target chemicals on reference space #####
+        # load reference coordinates
 
-    st.success("Done!!!")
+
+        reference_coordinates = load_coordinates(reference_folder_name, reference_file_name)
+        st.info("loading reference coordinates worked")
+        project_progress_bar.progress(50)
+        target_coordinates = load_coordinates(target_folder_name,
+                                                target_file_name,
+                                                reference_data=reference_file_name)
+        st.info("loading target coordinates worked")
+        project_progress_bar.progress(70)
+
+        # For now let's suppose that the user uploads the coordinates directly
+        # In reality the usser-provided-file will be preprocess and transformed. 
+        # new_coordinates = users_target_chemicals
+        # input_file = 'user_chemicals'
+        # Show the coordinates data
+        # st.write("Coordinates data:", coordinates_df)
+        reference_data_name = str(reference_space)
+        # fig_grey = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
+        #                     hover_name='INCHIKEY',  hover_data=['INCHIKEY'], opacity=0.8)
+        # figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=fig_grey,
+        #             hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'PREFERRED_NAME'],
+        #             color='red', opacity=1)
+        
+        hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
+        hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
+
+        figure = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
+                                    hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available)
+        
+        hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
+        hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
+
+        if 'Superclass' in hover_data_available:
+            figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=figure,
+                                        hover_name='PREFERRED_NAME', hover_data=hover_data_available,
+                                        column_for_color_map='Superclass', color_type='discrete', palette="Alphabet",
+                                        symbol='diamond', size=3, opacity=0.5)
+        else:
+            figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=figure,
+                    hover_name='INCHIKEY', hover_data=hover_data_available, color='red', size=3, opacity=0.7)
+
+        project_progress_bar.progress(95)    
+        st.plotly_chart(figure, use_container_width=True)
+        
+        #fig_color = chemical_space_plot()  @TODO: I will check later because we need to specify hue_column and so on
+        st.write("{} is the reference space shown in grey.".format(reference_space))
+
+        # Load the trained object
+        # Transform the user to the reference space of interest. 
+
+        project_progress_bar.progress(100)
+        st.success("Done!!!")
 
     
         
