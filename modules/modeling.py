@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import pandas as pd
 from openTSNE.sklearn import TSNE
+from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 import seaborn as sns
 from modules.preprocessing import *
@@ -135,6 +136,27 @@ def save_model(model, file_name, pickle=True, zip=True, use_joblib=False):
                 zipf.write(model_path)
             print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
 
+def save_surrogate_model(model1, model2, file_name):
+    """
+    Save model as pickle to temp and as zipped pickle to output
+    :param model: trained tSNE model
+    :param file_name: name tag of the original data file (e.g. for 'data_market.csv' the file_name would be 'data_market')
+    """
+    ensure_dirs()
+
+    # Saving trained tSNE object to temp folder
+    model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_surrogate.zlib')
+    print("--> Joblib surrogate models object")
+    joblib.dump((model1, model2), model_path, compress=5)
+    print(f"Saved fitted tSNE embedding to {model_path}")
+
+def load_surrogate_model(file_name):
+    print("--> Loading surrogate model")
+    model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_surrogate.zlib')
+    model1, model2 = joblib.load(filename=model_path)
+    return model1, model2
+
+
 
 def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     """
@@ -178,6 +200,7 @@ def load_model(file_name, from_zip=False, use_joblib=False):
     :param from_zip: Load from zip file #todo implement this option
     :return: model object
     """
+    print("--> Loading model")
     if use_joblib:
         model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
         print("loading joblib model from: " + model_path)
@@ -204,6 +227,7 @@ def transform_target(model, fingerprints):
     """
 
     # Prepare boolean fingerprint array
+    print("--> Calculating mapping ")
     fingerprints.dropna(inplace=True)
     X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
     print("Starting to transform")
@@ -212,4 +236,37 @@ def transform_target(model, fingerprints):
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     coordinates_df.index = fingerprints['INCHIKEY']
 
+    return coordinates_df
+
+def build_surrogate_model(folder_name, file_name, df_fingerprints):
+    print('--> build surrogate model')
+    # fingerprints
+    df_fingerprints.dropna(inplace=True)
+    df_fingerprints.drop_duplicates(subset=['INCHIKEY'], inplace=True)
+
+    # target variables: TSNE coordinates
+    df = load_coordinates(folder_name, file_name)
+    df.drop_duplicates(subset=['INCHIKEY'], inplace = True)
+    Y1 = df['TSNE1']
+    Y2 = df['TSNE2']
+
+    # Train random forests - takes ~40mins/model
+    X = np.array(df_fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+    print("Fitting model 1...")
+    model_1 = RandomForestRegressor(n_estimators=100, random_state=42).fit(X, Y1)
+    print("Fitting model 2...")
+    model_2 = RandomForestRegressor(n_estimators=100, random_state=42).fit(X, Y2)
+    return model_1, model_2
+
+def transform_target_surrogate(model1, model2, fingerprints):
+    # Prepare boolean fingerprint array
+    print("Predict TSNE coordinates with surrogate model")
+    fingerprints.dropna(inplace=True)
+    X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+    tsne1 = model1.predict(X)
+    tsne2 = model2.predict(X)
+    coordinates_df = pd.DataFrame()
+    coordinates_df['TSNE1'] = tsne1.T
+    coordinates_df['TSNE2'] = tsne2.T
+    coordinates_df.index = fingerprints['INCHIKEY']
     return coordinates_df
