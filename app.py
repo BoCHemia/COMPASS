@@ -145,41 +145,48 @@ def main():
     st.write("You have selected to map {} into {}".format(target_space, reference_space))  
 
     if not develop:
-        progress_bar = st.progress(0)
-        from modules.modeling import preprocess_data, save_user_file, save_fingerprints
+        with st.spinner("Calculating the chemical space mapping; this may take several minutes", show_time=True):
+            time.sleep(1)
+            progress_bar = st.progress(0)
+            from modules.modeling import preprocess_data, save_user_file, save_fingerprints
 
-        progress_bar.progress(5)
-        st.info("User data is preprocessed and saved in user folder")
-        st.info("Calculating fingerprints")
-        # new_df = load_input_file(file_name, foldername=folder_name)
-        new_df = user_target_chemicals
-        # todo: This is weird. I would like to have preprocess_data() and get_fingerprints() functions
-        new_fingerprints = preprocess_data(new_df)
-        save_user_file(user_dataframe=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name )
-        save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
-        progress_bar.progress(25)
-        st.info("Fingerprints have been calculated and saved")
+            progress_bar.progress(5)
+            if target_space == 'my_own_substances':
+                st.info("Preprocessing user data")
+                st.info("User data is preprocessed and saved in user folder")
+                st.info("Calculating fingerprints")
+                # new_df = load_input_file(file_name, foldername=folder_name)
+                # new_df = pd.read_csv(os.path.join('data', target_folder_name, "output_{}.csv".format(target_file_name)))
+                new_df = user_target_chemicals
+                # todo: This is weird. I would like to have preprocess_data() and get_fingerprints() functions
+                new_fingerprints = preprocess_data(new_df)
+                save_user_file(user_dataframe=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name )
+                save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
+                progress_bar.progress(25)
+                st.info("Fingerprints have been calculated and saved")
+            
+            else:
+                pass  # For now we only process user data
 
-        print("Next the trained reference model is loaded; this takes 1-3 mins")
-        # load tSNE model object
-        from modules.modeling import (load_model, transform_target, save_coordinates)
-        model = load_model(reference_file_name, use_joblib=True) #use_joblib=False, from_zip=False
-        
-        st.info("loading model worked")
-        progress_bar.progress(75)
+            st.info("Next the trained reference model is loaded; this takes 1-3 mins")
+            # load tSNE model object
+            progress_bar.progress(30)
+            from modules.modeling import (load_model, transform_target, save_coordinates)
+            model = load_model(reference_file_name, use_joblib=True) #use_joblib=False, from_zip=False
+            
+            st.info("loading model worked")
+            progress_bar.progress(75)
 
-
-        # transform
-        st.info("Next the coordinates of the user target chemicals are calculated using the loaded reference model")
-        target_coordinates = transform_target(model, new_fingerprints)
-        progress_bar.progress(95)
-        st.info("getting the new coordinates worked ant they are being saved now")
-        save_coordinates(coordinates=target_coordinates,
-                            folder_name=target_folder_name,
-                            file_name=target_file_name,
-                            reference_name=reference_file_name)
-        
-   
+            # transform
+            st.info("Next the coordinates of the user target chemicals are calculated using the loaded reference model")
+            target_coordinates = transform_target(model, new_fingerprints)
+            progress_bar.progress(95)
+            st.info("getting the new coordinates worked ant they are being saved now")
+            save_coordinates(coordinates=target_coordinates,
+                                folder_name=target_folder_name,
+                                file_name=target_file_name,
+                                reference_name=reference_file_name)
+            
     else:
         pass
 
