@@ -34,7 +34,8 @@ def get_color_map(palette, df, column_for_color_map):
         assert len(palette) == len(categories), "The size of the provided palette does not match the number of categories"
         color_map = dict(zip(categories, palette))
     elif type(palette) == dict:
-        assert any(categories in palette.keys()), "The provided palette is missing categories"
+        assert all(c in palette.keys() for c in categories), (f"The provided palette is missing categories: \
+                                                              palette: {palette}, categories: {categories}")
         color_map = palette
     else:
         raise ValueError("The provided palette could not be parsed:", palette)
