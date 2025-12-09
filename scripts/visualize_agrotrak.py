@@ -3,7 +3,7 @@ from modules.visualizing import *
 
 ###### Plot 1: Drugbank on its own (Superclass) #####
 input_folder = 'AgroTrak'
-input_file = 'zhang_2025_partial'
+input_file = 'agrotrak_zhang_2025_partial'
 coordinates = load_coordinates(folder_name=input_folder, file_name=input_file)
 
 figure = plot_chemical_space(coordinates, nametag='AgroTrak Pesticides',
@@ -22,7 +22,7 @@ reference_coordinates = load_coordinates(reference_folder, reference_file)
 
 # load input coordinates, to be mapped to reference
 input_folder = 'AgroTrak'
-input_file = 'zhang_2025_partial'
+input_file = 'agrotrak_zhang_2025_partial'
 new_coordinates = load_coordinates(folder_name=input_folder, file_name=input_file, reference_data=reference_file)
 
 figure = plot_chemical_space(reference_coordinates, nametag='ZeroPM reference space', hover_name='PREFERRED_NAME', 
@@ -45,7 +45,7 @@ reference_coordinates = load_coordinates(reference_folder, reference_file)
 
 # load input coordinates, to be mapped to reference
 input_folder = 'AgroTrak'
-input_file = 'zhang_2025_partial'
+input_file = 'agrotrak_zhang_2025_partial'
 new_coordinates = load_coordinates(folder_name=input_folder, file_name=input_file, reference_data=reference_file)
 
 figure = plot_chemical_space(reference_coordinates, nametag='COCONUT reference space', hover_name='PREFERRED_NAME', 

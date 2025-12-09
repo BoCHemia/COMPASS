@@ -8,7 +8,7 @@ input_path = os.path.join(PROJECT_ROOT, "data")
 temp_path = os.path.join(PROJECT_ROOT, "temp")
 
 folder_name = "AgroTrak"
-file_name = "zhang_2025"
+file_name = "agrotrak_zhang_2025"
 
 # -----------------------------
 # PREPROCESSING
