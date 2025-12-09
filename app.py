@@ -4,9 +4,13 @@ import pandas as pd
 import time
 import os
 
+from modules.modeling import load_coordinates
+from modules.visualizing import plot_chemical_space 
+
 def main():
     st.set_page_config(layout="wide")
 
+    # ----------- CONFIGURATION SIDEBAR ----------- 
     # Streamlit app title
     st.sidebar.markdown("# COMPASS\n") # could be replaced with an image logo later
     
@@ -21,10 +25,11 @@ def main():
 
     # Step 1: Select reference space
     st.sidebar.markdown("### 1: Select reference chemical space")
-    available_ref_spaces_dict = {'DrugBank': ['5.1.13_partial'],
+    available_ref_spaces_dict = {'DrugBank': ['5.1.13_partial'],  # should this automatically update with what is available in /data?
                                     'PFAS': ['nist'],
                                     'ZeroPM': ['partial'],
-                                    'Coconut': None}
+                                    'Coconut': None,
+                                    'AgroTrak': ['zhang_2025_partial']}
     
     reference_space = st.sidebar.selectbox('Select reference chemical space"', label_visibility="collapsed",
                             placeholder='Choose an option',
@@ -49,7 +54,6 @@ def main():
                                                 index=None,
                                                 options=ref_versions,
                                                 key='ref_space_version')
-            
             if reference_space_version:
                 reference_file_name = str.lower(reference_space + "_" + reference_space_version)
     
@@ -58,33 +62,30 @@ def main():
     target_space = st.sidebar.selectbox('Select target chemicals to map into the reference space',  label_visibility="collapsed",
                             placeholder='Choose an option',
                             index=None,
-                            options=list(available_ref_spaces_dict.keys()) + ['my_own_substances'],
+                            options= [None] + list(available_ref_spaces_dict.keys()) + ['my_own_substances'],
                             key='target_space')
-
+    
     if target_space:
         target_folder_name = str(target_space)
         target_file_name = str.lower(target_space)
 
-    target_versions = available_ref_spaces_dict.get(target_space)
-    if target_versions: 
-        if len(target_versions) == 1:
+        target_versions = available_ref_spaces_dict.get(target_space)
+        if target_versions: 
+            if len(target_versions) == 1:
                 # Automatically select the single available version
                 target_space_version = target_versions[0]
                 st.sidebar.write(f"Version: **{target_space_version}**")
-        else:
-            # Let the user choose
-            target_space_version = st.sidebar.selectbox('Choose version',
-                                            placeholder='Choose an option',
-                                            index=None,
-                                            options=target_versions,
-                                            key='target_space_version_selectbox')
-        
-        if target_space_version:
-            target_file_name = str.lower(target_space + "_" + target_space_version)
+            else:
+                # Let the user choose
+                target_space_version = st.sidebar.selectbox('Choose version',
+                                                placeholder='Choose an option',
+                                                index=None,
+                                                options=target_versions,
+                                                key='target_space_version_selectbox')
+            if target_space_version:
+                target_file_name = str.lower(target_space + "_" + target_space_version)
 
-
-    # Section to define the target when the user selects 'my_own_substances'
-    # Upload CSV file
+    # - Enable .csv upload when the user selects 'my_own_substances'
     if target_space == 'my_own_substances':
         user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
 
@@ -116,25 +117,26 @@ def main():
             st.info("Please upload a CSV file to proceed.")
             st.stop()
 
-    # Start mapping
+    # Step 3: Activate mapping --  Can we make the form/button more beautiful?
     with st.sidebar.form("config_form", clear_on_submit=False, border=False): 
         submit_message = "Get chemical space mapping"
-        submitted = st.form_submit_button(submit_message)  # The form and the button defaults are so ugly, but we can change it later
+        submitted = st.form_submit_button(submit_message)  
+        if submitted:
+            st.session_state["submitted"] = True
 
-    if not submitted:
-        st.write("Please press the ''{}''  button to proceed.".format(submit_message))
+    if "submitted" not in st.session_state:
+        st.write(f"Please press the '{submit_message}' button to proceed.")
         st.stop()
-
-    # One more section to check if everything is set up correctly
-    # If things are missing we will catch them here and we can inform the user
-    if submitted: 
+    
+    # - Check if everything is set up correctly
+    if st.session_state.get("submitted", False):
         missing = []
         if reference_space is None:
             missing.append("reference space")
         if (available_ref_spaces_dict.get(reference_space)) and (reference_space_version is None):
             missing.append("reference version")
-        if target_space is None:
-            missing.append("target space")
+        # if target_space is None:
+        #     missing.append("target space")
         if (available_ref_spaces_dict.get(target_space)) and (target_space_version is None):
             missing.append("target version")
         if target_space == "my_own_substances" and user_target_chemicals is None:
@@ -145,9 +147,10 @@ def main():
             st.stop()
 
         st.sidebar.info("You have selected to map {} into {}".format(target_space, reference_space)) 
-
     
-
+    
+    # ----------- DATA LOADING AND TRANSFORMATION SECTION ----------- 
+    # - Transform user data and calculate coordinates (if needed)
     if not develop:
         with st.spinner("Calculating the chemical space mapping; this may take several minutes", show_time=True):
             time.sleep(1)
@@ -192,16 +195,11 @@ def main():
             save_coordinates(coordinates=target_coordinates,
                                 folder_name=target_folder_name,
                                 file_name=target_file_name,
-                                reference_name=reference_file_name)
-            
+                                reference_name=reference_file_name)            
     else:
         pass
 
-
-    from modules.modeling import load_coordinates
-    from modules.visualizing import plot_chemical_space # chemical_space_plot_grey, map_input_data
-
-
+    # - load reference and target coordinates
     status_top = st.empty()
     status_top.write('Project substances')
     project_progress_bar = st.progress(0)
@@ -211,52 +209,22 @@ def main():
         time.sleep(3)
         project_progress_bar.progress(10)
         
+        ###### Load selected datasets #####
+        @st.cache_data
+        def load_coordinates_to_cache(folder_name, file_name, reference_data=""):
+            # IMPORTANT: Cache the conversion to prevent computation on every rerun
+            return load_coordinates(folder_name, file_name, reference_data)
 
-        
-        ###### Plot 1: Plot user target chemicals on reference space #####
         # load reference coordinates
-        reference_coordinates = load_coordinates(reference_folder_name, reference_file_name)
+        reference_coordinates = load_coordinates_to_cache(reference_folder_name, reference_file_name)
         status.info("loading reference coordinates worked")
         project_progress_bar.progress(50)
-        target_coordinates = load_coordinates(target_folder_name,
-                                                target_file_name,
-                                                reference_data=reference_file_name)
-        status.info("loading target coordinates worked")
-        project_progress_bar.progress(70)
 
-        # For now let's suppose that the user uploads the coordinates directly
-        # In reality the usser-provided-file will be preprocess and transformed. 
-        # new_coordinates = users_target_chemicals
-        # input_file = 'user_chemicals'
-        # Show the coordinates data
-        # st.write("Coordinates data:", coordinates_df)
-        reference_data_name = str(reference_space)
-        # fig_grey = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
-        #                     hover_name='INCHIKEY',  hover_data=['INCHIKEY'], opacity=0.8)
-        # figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=fig_grey,
-        #             hover_name='PREFERRED_NAME', hover_data=['INCHIKEY', 'PREFERRED_NAME'],
-        #             color='red', opacity=1)
-        
-        hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
-        hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
-
-        figure = plot_chemical_space(reference_coordinates, nametag=reference_data_name + ' reference space', 
-                                    hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available)
-        
-        hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
-        hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
-
-        if 'Superclass' in hover_data_available:
-            figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=figure,
-                                        hover_name='PREFERRED_NAME', hover_data=hover_data_available,
-                                        column_for_color_map='Superclass', color_type='discrete', palette="Alphabet",
-                                        symbol='diamond', size=3, opacity=0.5)
-        else:
-            figure = plot_chemical_space(target_coordinates, nametag=target_file_name, map_on=figure,
-                    hover_name='INCHIKEY', hover_data=hover_data_available, color='red', size=3, opacity=0.7)
-
-        project_progress_bar.progress(95)    
-        st.plotly_chart(figure, use_container_width=True)
+        # load target coordinates
+        if target_space:
+            target_coordinates = load_coordinates_to_cache(target_folder_name, target_file_name, reference_data=reference_file_name)
+            status.info("loading target coordinates worked")
+            project_progress_bar.progress(70)
         
         project_progress_bar.progress(100)
         status.success("Done!!!")
@@ -266,6 +234,85 @@ def main():
         status_top.empty()
         project_progress_bar.empty()
         status.empty()
+
+
+    ### ----------- VISUALIZATION SECTION -----------  ###
+    ###### Plot 1: Plot user target chemicals on reference space #####
+    @st.fragment
+    def fragment_plot_chemical_space():    # defining a fragment functions ensure that Streamlit only reruns this part when selecting hue column
+        # - Color settings
+        with st.container(border=False):
+
+            def allowed_hue_columns(file_name):
+                classyfire = ['Kingdom', 'Superclass', 'Class', 'Subclass']
+                if 'zeropm' in file_name:
+                    hue_columns = classyfire
+                elif 'zhang' in file_name:
+                    hue_columns = classyfire + ['Chemical class', 'Primary target class', 'Mode of action', 'Mode of action group']
+                else:
+                    hue_columns = classyfire
+
+                return hue_columns
+
+            cols = st.columns(2)
+            if target_space:
+                dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference", "Target", "None"], index=2)
+            else:
+                dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference"], index=0)
+
+            if dataset_to_color == "Reference":
+                hue_options_ref = [None] + list(set(reference_coordinates.columns) & set(allowed_hue_columns(reference_file_name)))
+                hue_ref = cols[1].selectbox("Color reference by", hue_options_ref, index=0)
+                hue_target = None  # reset target coloring
+            else:
+                if target_space == 'my_own_substances':
+                    hue_options_target = [None] + list(target_coordinates.columns)
+                else:
+                    hue_options_target =  [None] + list(set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
+                hue_target = cols[1].selectbox("Color target by", hue_options_target, index=0)
+                hue_ref = None  # reset reference coloring
+
+        # - reference set
+        hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
+        hover_data_ref_available = list (set(hover_data_ref_preferred) & set(reference_coordinates.columns))
+
+        if hue_ref:
+            color_type_ref =  'continuous' if pd.api.types.is_numeric_dtype(reference_coordinates[hue_ref]) else 'discrete'
+            palette_ref = 'Alphabet' if color_type_ref == 'discrete' else 'Turbo'
+
+            figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space', 
+                                        hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
+                                        column_for_color_map=hue_ref, color_type=color_type_ref, palette=palette_ref)
+        else:
+            figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space', 
+                                        hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available)
+        
+        # - target set
+        if target_space: 
+            hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
+            hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
+
+            if hue_target: #'Superclass' in hover_data_available:
+
+                color_type_target =  'continuous' if pd.api.types.is_numeric_dtype(target_coordinates[hue_target]) else 'discrete'
+                palette_target = 'Alphabet' if color_type_target == 'discrete' else 'Turbo'
+
+                figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
+                                            hover_name='PREFERRED_NAME', hover_data=hover_data_available,
+                                            column_for_color_map=hue_target, color_type=color_type_target, palette=palette_target,
+                                            symbol='diamond', size=3, opacity=0.5)
+            else:
+                figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
+                                            hover_name='INCHIKEY', hover_data=hover_data_available, color='black', 
+                                            symbol='diamond', size=3, opacity=0.7)
+
+        st.plotly_chart(figure, use_container_width=True)
+
+    with st.container(border=True):
+        fragment_plot_chemical_space()
+
+
+    ###### Plot 2: Placeholder #####
 
 
 if __name__ == '__main__':

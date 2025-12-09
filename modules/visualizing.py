@@ -1,6 +1,7 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import os
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
@@ -92,6 +93,17 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
         elif color_type== 'continuous': # continuous coloring
             print("Use {} column to color map".format(column_for_color_map))
+            
+            # # apply log transform if needed
+            # vals = df[column_for_color_map]
+            # if (vals > 0).all():
+            #     ratio = vals.max() / vals.min()
+            #     if ratio > 100:
+            #         df = df.copy()
+            #         df[column_for_color_map + " (log10)"] = np.log10(vals)
+            #         column_for_color_map = column_for_color_map + " (log10)"
+            #         print(f"Applied log10 transform to {column_for_color_map} for coloring")
+
             assert type(palette) == str, "The provided continuous palette must be plotly palette name"
             color_continuous_scale = palette
             input_fig = px.scatter(df, x="TSNE1", y="TSNE2",
@@ -114,7 +126,6 @@ def plot_chemical_space(df, nametag = '', map_on=None,
         input_fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', 
                                        marker=dict(color=color, size=12, opacity=1),
                                        legendgroup=nametag, showlegend=True, name=nametag))
-
     
     # merge data
     if map_on is not None:
@@ -138,12 +149,11 @@ def plot_chemical_space(df, nametag = '', map_on=None,
         # align legend look 
         legend_tracegroupgap=0, 
         legend_itemsizing='constant',
-        title="",
+        title='',
         font=dict(
             family="Arial",
             size=12,
-            color="black"
-        ),)
+            color="black"),)
 
     return merged_fig
 
@@ -270,59 +280,6 @@ def map_input_data(fig, df, nametag = '',
 
 
 # old code for reference
-def chemical_space_plot(df, hue_column, color_map, hover_name = 'PREFERRED_NAME', hover_data=['CASRN', 'Superclass', 'Class', 'Subclass'], train=False):
-    # Scatterplot
-    df.fillna('not assigned', inplace=True)
-    fig = px.scatter(df, x="TSNE1", y="TSNE2", color=hue_column,
-                    color_discrete_map=color_map,
-                    hover_name = hover_name,
-                    hover_data=hover_data,
-                    render_mode="webgl",
-                    height=700, width=1200
-                    )
-    fig.update_traces(showlegend=False)
-
-    if train==True:
-        symbol='diamond',
-        fig.update_traces(marker=dict(size=5, symbol='diamond' ,opacity=0.5, line=dict(width=0)))
-    else:
-        symbol='circle',
-        fig.update_traces(marker=dict(size=3, opacity=0.3, line=dict(width=0))) # plot markers
-
-    # Add custom legend traces to control the opacity of the legend markers
-    for c in color_map:
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None],
-            mode='markers',
-            marker=dict(color=color_map[c], symbol=symbol, size=12, opacity=1),
-            legendgroup=c,
-            showlegend=True,
-            name=c,
-        ))
-
-    fig.update_layout(
-        dragmode="zoom",
-        uirevision=True,
-        xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False, 
-                fixedrange=False),
-        yaxis=dict(title="TSNE2",visible=False, showgrid=False, zeroline=False, 
-                fixedrange=False),
-        modebar=dict(add=["zoom", "pan", "resetScale"]),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        legend_title_text=hue_column,
-        legend=dict(itemsizing='constant',
-                    itemwidth=30,  
-                    tracegroupgap=0,
-                    x=1.0,
-                    y=0.5,
-                    xanchor='left',
-                    yanchor='middle',
-                    orientation='v',
-                    font=dict(family="Arial", size=10)))
-                
-    return fig
-
 def get_color_class_mapping(folder_name, file_name):
     df_reference_tsne = pd.read_csv(os.path.join(PROJECT_ROOT, 'data', folder_name, f'output_{file_name}.csv'))
     # This is the palette I used in my publication for the top 15 most common ClassyFire Superclasses + some code snippets
