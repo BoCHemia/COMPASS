@@ -20,6 +20,54 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Data and model loading
 # -----------------------------
 
+def prepare_classyfire_data():
+    input_path = os.path.join(PROJECT_ROOT, "data")
+    classyfire_raw = pd.read_csv(os.path.join(input_path, "ClassyFire", "raw_classyfire.csv"))
+    classyfire = classyfire_raw.drop_duplicates()
+    classyfire = classyfire_raw.dropna(subset="Kingdom")
+
+    hierarchy = ["Kingdom", "Superclass", "Class", "Subclass"]
+
+    for i in range(1, len(hierarchy)):
+        lower = hierarchy[i]
+        higher_levels = hierarchy[:i]
+
+        row_mask = classyfire[higher_levels].eq(classyfire[lower], axis=0).any(axis=1)
+
+        classyfire.loc[row_mask, lower] = np.nan
+
+    classyfire["num_missing"] = classyfire[hierarchy].isna().sum(axis=1)
+    classyfire = (classyfire.sort_values("num_missing").drop_duplicates(subset='INCHIKEY', keep="first").drop(columns="num_missing"))
+
+    classyfire.to_csv(os.path.join(input_path, "ClassyFire", "input_classyfire.csv"), index=False)
+
+    return classyfire
+
+
+def standardize_structures(df):
+    if not 'standardized SMILES' in df.columns:
+        df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
+    if not "INCHIKEY" in df.columns:
+        df['INCHIKEY'] = get_inchikeys(df['standardized SMILES'])
+    return df
+
+
+def calculate_fingerprints(df, radius=2, fpSize=1024, **kwargs):
+    """
+    Wrapper function to calculate fingerprints
+    :param df: input dataframe with standardized SMILES
+    :**kwargs: fingerprint calculation parameters in addition to radius and fpSize (defaults provided)
+    :return: pandas DataFrame of fingerprints
+    """
+    print("Calculating fingerprints ...")
+    fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=radius, fpSize=fpSize, **kwargs))
+    df_fingerprints = pd.concat([df["INCHIKEY"], fingerprints], axis=1)
+    
+    print("Fingerprints calculated.")
+
+    return df_fingerprints
+
+
 def preprocess_data(df, radius=2, fpSize=1024, **kwargs):
     """
     Wrapper function to standardize SMILES, add InChIKeys and calculate fingerprints
@@ -31,20 +79,11 @@ def preprocess_data(df, radius=2, fpSize=1024, **kwargs):
     df.fillna({'SMILES': ''}, inplace=True) # replace nan SMILES with empty strings
     df = standardize_structures(df) # add standardized SMILES and INCHIKEY columns
 
-    fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=radius, fpSize=fpSize, **kwargs))
-    df_fingerprints = pd.concat([df["INCHIKEY"], fingerprints], axis=1)
+    df_fingerprints = calculate_fingerprints(df, radius=2, fpSize=1024, **kwargs)
     
     print("Data preprocessed (standardized SMILES, INCHIKEY) and fingerprints calculated.")
 
     return df_fingerprints
-
-
-def standardize_structures(df):
-    if not 'standardized SMILES' in df.columns:
-        df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
-    if not "INCHIKEY" in df.columns:
-        df['INCHIKEY'] = get_inchikeys(df['standardized SMILES'])
-    return df
 
 
 def load_input_file(file_name, folder_name):
@@ -406,7 +445,7 @@ def standardize_smiles_df(df, col_smiles, **kwargs):
     ----------
     series of standardized SMILES
     """
-
+    df[col_smiles].fillna('', inplace=True)
     smiles_df = df[col_smiles].apply(standardize_smiles, **kwargs)
     return smiles_df
 
