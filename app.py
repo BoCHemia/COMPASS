@@ -3,9 +3,10 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+import plotly.express as px
 
 from modules.modeling import load_coordinates
-from modules.visualizing import plot_chemical_space 
+from modules.visualizing import plot_chemical_space, plot_treemap
 
 def main():
     st.set_page_config(layout="wide")
@@ -108,11 +109,11 @@ def main():
             target_folder_name = '_USER'
 
             # Load the uploaded data, save to data/_USER folder
-            user_target_chemicals = pd.read_csv(user_target_chemicals)
-            user_target_chemicals.to_csv(os.path.join('data', '_USER', target_file_name + '.csv'), index=False)
+            df_user = pd.read_csv(user_target_chemicals)
+            df_user.to_csv(os.path.join('data', '_USER', 'raw_' + target_file_name + '.csv'), index=False)
 
             # Show the input data
-            st.write("Uploaded data:", user_target_chemicals)
+            st.write("Uploaded data:", df_user)
         else:
             st.info("Please upload a CSV file to proceed.")
             st.stop()
@@ -152,56 +153,77 @@ def main():
     # ----------- DATA LOADING AND TRANSFORMATION SECTION ----------- 
     # - Transform user data and calculate coordinates (if needed)
     if not develop:
-        with st.spinner("Calculating the chemical space mapping; this may take several minutes", show_time=True):
-            time.sleep(1)
-            
-            progress_bar = st.progress(0)
-            status_userdata = st.empty()
+        if target_space == 'my_own_substances':
+            with st.spinner("Calculating the chemical space mapping; this may take several minutes", show_time=True):
+                time.sleep(1)
+                
+                progress_bar = st.progress(0)
+                status_userdata = st.empty()
 
-            from modules.modeling import preprocess_data, save_user_file, save_fingerprints
+                from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints
 
-            progress_bar.progress(5)
-            if target_space == 'my_own_substances':
+                progress_bar.progress(5)
+                
+                # - preprocessing
                 status_userdata.info("Preprocessing user data")
-                status_userdata.info("User data is preprocessed and saved in user folder")
+                df_user = standardize_structures(df_user)
+
+                progress_bar.progress(15)
+                
+                required = {"Superclass", "Class", "Subclass"}
+                if not required.issubset(df_user.columns):
+                    status_userdata.info("No ClassyFire information provided; complementing with available ClassyFire data.")
+                    classyfire = pd.read_csv(os.path.join('data', 'ClassyFire', 'input_classyfire.csv'))
+                    df_user = pd.merge(df_user, classyfire, on='INCHIKEY', how='left')
+
+                    missing_cf = df_user['Superclass'].isna().sum()
+                    if missing_cf>0:
+                        st.warning(f"ClassyFire information merged; {missing_cf} out of {len(df_user)} substances remain without taxonomy information.  \nConsider adding ClassyFire information to your input file.")
+                    else:
+                        status_userdata.status("ClassyFire information merged; all substances have taxonomy information.")
+
+                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name )
+                
+                progress_bar.progress(20)
+                status_userdata.info("User data was preprocessed and saved in user folder")
+
+                # - fingerprints
                 status_userdata.info("Calculating fingerprints")
-                # new_df = load_input_file(file_name, foldername=folder_name)
-                # new_df = pd.read_csv(os.path.join('data', target_folder_name, "output_{}.csv".format(target_file_name)))
-                new_df = user_target_chemicals
-                # todo: This is weird. I would like to have preprocess_data() and get_fingerprints() functions
-                new_fingerprints = preprocess_data(new_df)
-                save_user_file(user_dataframe=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name )
+                new_fingerprints = calculate_fingerprints(df_user)
                 save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
-                progress_bar.progress(25)
+                
+                progress_bar.progress(30)
                 status_userdata.info("Fingerprints have been calculated and saved")
-            
-            else:
-                pass  # For now we only process user data
+                
+                # load tSNE model object
+                status_userdata.info("Loading trained reference model; this takes 1-3 mins")
 
-            status_userdata.info("Next the trained reference model is loaded; this takes 1-3 mins")
-            # load tSNE model object
-            progress_bar.progress(30)
-            from modules.modeling import (load_model, transform_target, save_coordinates)
-            model = load_model(reference_file_name, use_joblib=True) #use_joblib=False, from_zip=False
-            
-            status_userdata.info("loading model worked")
-            progress_bar.progress(75)
+                from modules.modeling import (load_model, load_model_offset, transform_target, save_coordinates)
+                model = load_model(reference_file_name, use_joblib=True)
+                offset = load_model_offset(reference_file_name) 
+                
+                status_userdata.info("Loading model complete")
+                progress_bar.progress(75)
 
-            # transform
-            status_userdata.info("Next the coordinates of the user target chemicals are calculated using the loaded reference model")
-            target_coordinates = transform_target(model, new_fingerprints)
-            progress_bar.progress(95)
-            status_userdata.info("getting the new coordinates worked ant they are being saved now")
-            save_coordinates(coordinates=target_coordinates,
-                                folder_name=target_folder_name,
-                                file_name=target_file_name,
-                                reference_name=reference_file_name)            
-    else:
-        pass
+                # transform
+                status_userdata.info("Calculating coordinates for user target chemicals mapped into selected reference space")
+                target_coordinates = transform_target(model, new_fingerprints) 
+                target_coordinates = target_coordinates - offset.values
+
+                progress_bar.progress(95)
+                status_userdata.info("Calculation complete...saving coordinates.")
+                save_coordinates(coordinates=target_coordinates,
+                                    folder_name=target_folder_name,
+                                    file_name=target_file_name,
+                                    reference_name=reference_file_name)       
+                progress_bar.progress(100)
+
+                # - empty progress bars and status after a short delay
+                time.sleep(1)
+                progress_bar.empty()
+                status_userdata.empty()     
 
     # - load reference and target coordinates
-    status_top = st.empty()
-    status_top.write('Project substances')
     project_progress_bar = st.progress(0)
     status = st.empty()
 
@@ -217,13 +239,13 @@ def main():
 
         # load reference coordinates
         reference_coordinates = load_coordinates_to_cache(reference_folder_name, reference_file_name)
-        status.info("loading reference coordinates worked")
+        status.info("Loading reference coordinates complete")
         project_progress_bar.progress(50)
 
         # load target coordinates
         if target_space:
             target_coordinates = load_coordinates_to_cache(target_folder_name, target_file_name, reference_data=reference_file_name)
-            status.info("loading target coordinates worked")
+            status.info("Loading target coordinates complete")
             project_progress_bar.progress(70)
         
         project_progress_bar.progress(100)
@@ -231,7 +253,6 @@ def main():
 
         # - empty progress bars and status after a short delay
         time.sleep(1)
-        status_top.empty()
         project_progress_bar.empty()
         status.empty()
 
@@ -266,15 +287,16 @@ def main():
                 hue_target = None  # reset target coloring
             else:
                 if target_space == 'my_own_substances':
-                    hue_options_target = [None] + list(target_coordinates.columns)
+                    drop_list = ['PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',  'CASRN', 'IUPAC', 'InChI']
+                    hue_options_target = [None] +  [c for c in list(target_coordinates.columns) if c not in drop_list]
                 else:
                     hue_options_target =  [None] + list(set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
                 hue_target = cols[1].selectbox("Color target by", hue_options_target, index=0)
                 hue_ref = None  # reset reference coloring
 
         # - reference set
-        hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
-        hover_data_ref_available = list (set(hover_data_ref_preferred) & set(reference_coordinates.columns))
+        hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
+        hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
 
         if hue_ref:
             color_type_ref =  'continuous' if pd.api.types.is_numeric_dtype(reference_coordinates[hue_ref]) else 'discrete'
@@ -289,10 +311,10 @@ def main():
         
         # - target set
         if target_space: 
-            hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'SMILES', 'CAS']
+            hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
             hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
 
-            if hue_target: #'Superclass' in hover_data_available:
+            if hue_target:
 
                 color_type_target =  'continuous' if pd.api.types.is_numeric_dtype(target_coordinates[hue_target]) else 'discrete'
                 palette_target = 'Alphabet' if color_type_target == 'discrete' else 'Turbo'
@@ -305,15 +327,31 @@ def main():
                 figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
                                             hover_name='INCHIKEY', hover_data=hover_data_available, color='black', 
                                             symbol='diamond', size=3, opacity=0.7)
-
+        
         st.plotly_chart(figure, use_container_width=True)
+
 
     with st.container(border=True):
         fragment_plot_chemical_space()
+        
 
-
-    ###### Plot 2: Placeholder #####
-
+    ###### Plot 2: Treemap #####
+    @st.fragment
+    def fragment_plot_treemap():
+        cols = st.columns(2)
+        dataset_for_treemap = cols[0].selectbox("Choose a dataset for the treemap", ["Reference", "Target"], index=0)
+        df_treemap = reference_coordinates if dataset_for_treemap == "Reference" else target_coordinates
+        
+        required = {"Superclass", "Class", "Subclass"}
+        if required.issubset(df_treemap.columns):
+            figure = plot_treemap(df_treemap)
+            st.plotly_chart(figure, use_container_width=True)
+        else:
+            st.info("Treemap can only be generated for datasets containing ClassyFire taxonomy (Superclass, Class, Subclass).")
+        
+    with st.container(border=True):
+        fragment_plot_treemap()
+        
 
 if __name__ == '__main__':
     main()
