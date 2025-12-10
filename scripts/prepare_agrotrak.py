@@ -47,28 +47,6 @@ df_pubchem.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"
 # -----------------------------
 
 print("Merging with Classyfire data ...")
-def prepare_classyfire_data():  ## -- add to preprocessing.py and adjust in other prepare_*.py scripts
-    classyfire_raw = pd.read_csv(os.path.join(input_path, "ClassyFire", "raw_classyfire.csv"))
-    classyfire = classyfire_raw.drop_duplicates()
-    classyfire = classyfire_raw.dropna(subset="Kingdom")
-
-    hierarchy = ["Kingdom", "Superclass", "Class", "Subclass"]
-
-    for i in range(1, len(hierarchy)):
-        lower = hierarchy[i]
-        higher_levels = hierarchy[:i]
-
-        row_mask = classyfire[higher_levels].eq(classyfire[lower], axis=0).any(axis=1)
-
-        classyfire.loc[row_mask, lower] = np.nan
-
-    classyfire["num_missing"] = classyfire[hierarchy].isna().sum(axis=1)
-    classyfire = (classyfire.sort_values("num_missing").drop_duplicates(subset='INCHIKEY', keep="first").drop(columns="num_missing"))
-
-    classyfire.to_csv(os.path.join(input_path, "ClassyFire", "input_classyfire.csv"), index=False)
-
-    return classyfire
-
 classyfire = prepare_classyfire_data()
 df_classyfire = pd.merge(df_pubchem, classyfire, on='INCHIKEY', how='left')
 
