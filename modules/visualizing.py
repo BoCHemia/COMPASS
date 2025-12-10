@@ -18,7 +18,39 @@ def get_color_map(palette, df, column_for_color_map):
     :return: dictionary where categories are the keys, and colors are the values
     """
     # categories = df[column_for_color_map].unique()
-    categories = df[column_for_color_map].value_counts().index.tolist() # sort by frequency
+    if column_for_color_map=="Superclass": # fixed order and categories for ClassyFire Superclass
+        categories = ['Lipids and lipid-like molecules',
+                        'Organoheterocyclic compounds',
+                        'Benzenoids',
+                        'Hydrocarbons',
+                        'Hydrocarbon derivatives',
+                        'Organic acids and derivatives',
+                        'Organic nitrogen compounds',
+                        'Organic oxygen compounds',
+                        'Organohalogen compounds',
+                        'Organosulfur compounds',
+                        'Organophosphorus compounds',
+                        'Alkaloids and derivatives',
+                        'Phenylpropanoids and polyketides',
+                        'Lignans, neolignans and related compounds',
+                        'Nucleosides, nucleotides, and analogues',
+                        'Organometallic compounds',
+                        'Mixed metal/non-metal compounds',
+                        'Homogeneous metal compounds',
+                        'Homogeneous non-metal compounds',
+                        'Inorganic salts',
+                        'Miscellaneous inorganic compounds',
+                        'not assigned',
+                        'Organic 1,3-dipolar compounds',
+                        'Acetylides',
+                        'Allenes',
+                        'Carbides',
+                        'Organic Polymers',
+                        'Organic salts',
+                        'Organic cations',
+                        'Organic anions',]
+    else:
+        categories = df[column_for_color_map].value_counts().index.tolist() # sort by frequency
 
     if type(palette) == str:
         # colors = px.colors.sample_colorscale(palette, len(categories)) 
@@ -41,6 +73,7 @@ def get_color_map(palette, df, column_for_color_map):
     else:
         raise ValueError("The provided palette could not be parsed:", palette)
     return color_map
+
 
 
 
@@ -93,16 +126,6 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
         elif color_type== 'continuous': # continuous coloring
             print("Use {} column to color map".format(column_for_color_map))
-            
-            # # apply log transform if needed
-            # vals = df[column_for_color_map]
-            # if (vals > 0).all():
-            #     ratio = vals.max() / vals.min()
-            #     if ratio > 100:
-            #         df = df.copy()
-            #         df[column_for_color_map + " (log10)"] = np.log10(vals)
-            #         column_for_color_map = column_for_color_map + " (log10)"
-            #         print(f"Applied log10 transform to {column_for_color_map} for coloring")
 
             assert type(palette) == str, "The provided continuous palette must be plotly palette name"
             color_continuous_scale = palette
@@ -127,6 +150,14 @@ def plot_chemical_space(df, nametag = '', map_on=None,
                                        marker=dict(color=color, size=12, opacity=1),
                                        legendgroup=nametag, showlegend=True, name=nametag))
     
+    # build custom hovertemplate
+    hovertemplate = ("<b>%{hovertext}</b><br>"
+                     "TSNE=(%{x}, %{y})<br>")
+    for i, col in enumerate(hover_data):
+        hovertemplate += f"{col}: %{{customdata[{i}]}}<br>"
+    hovertemplate += "<extra></extra>"
+    input_fig.update_traces(hovertemplate=hovertemplate, hoverlabel=dict(align="left"))
+    
     # merge data
     if map_on is not None:
         fig = map_on
@@ -139,8 +170,8 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
     merged_fig.update_layout(
         margin=dict(l=40, r=40, t=40, b=40),
-        paper_bgcolor='white',
-        plot_bgcolor='white',
+        # paper_bgcolor='white',
+        # plot_bgcolor='white',
         font_color='black',
         xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False,
                     fixedrange=False),
@@ -157,6 +188,33 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
     return merged_fig
 
+
+def plot_treemap(df, palette='Alphabet'):
+    """
+    Map ClassyFire classes as treemap
+
+    :param df: dataframe with ClassyFire annotations
+    :param palette: color palette for treemap
+    :return: figure object
+    """
+
+    df_treemap = df[["Superclass", "Class", "Subclass"]].dropna(thresh=3).fillna("not assigned")
+    color_discrete_map = get_color_map(palette, df_treemap, "Superclass")
+
+    figure = px.treemap(df_treemap, path=["Superclass", "Class", "Subclass"], color='Superclass', 
+                            color_discrete_map=color_discrete_map)
+    
+    hovertemplate = (
+                        "<b>%{label}</b><br>" 
+                        "Parent: %{parent}<br>" 
+                        "ID: %{id}<br>"
+                        "Count: %{value}<br>"
+                        "<extra></extra>"
+                    )
+        
+    figure.update_traces(hovertemplate=hovertemplate)
+
+    return figure
 
 def save_figure(fig, file_name, format='.png', height=700, width=1200, scale=3):
     # todo: currently, the resolution of the exported figures is very low
@@ -183,8 +241,8 @@ def chemical_space_plot_grey(df,
         name='reference space')
 
     fig_grey.update_layout(
-        paper_bgcolor='white',
-        plot_bgcolor='white',
+        # paper_bgcolor='white',
+        # plot_bgcolor='white',
         font_color='black',
         xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False, 
                     fixedrange=False),
@@ -268,8 +326,8 @@ def map_input_data(fig, df, nametag = '',
     merged_fig = go.Figure(data=fig.data + input_fig.data)
 
     merged_fig.update_layout(
-        paper_bgcolor='white',
-        plot_bgcolor='white',
+        # paper_bgcolor='white',
+        # plot_bgcolor='white',
         font_color='black',
         xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False,
                     fixedrange=False),
