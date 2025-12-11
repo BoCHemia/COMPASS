@@ -9,14 +9,22 @@ from modules.modeling import load_coordinates
 from modules.visualizing import plot_chemical_space, plot_treemap
 
 def main():
-    st.set_page_config(layout="wide")
+    st.set_page_config(page_title="COMPASS", page_icon="🧭",
+                       layout="wide", initial_sidebar_state="expanded",
+                        menu_items={
+                            'About': "COMPASS (**COMPA**rative chemical **S**pace **S**ystem) acts as a navigation tool for chemical space,  "
+                            "offering harmonized reference maps that support transparent visualisation of chemical datasets and model domains. "
+                            "By selecting a reference space (e.g., marketed chemicals, pharmaceuticals, PFAS), "
+                            "you can locate and explore chemical data sets in relation to known chemical landscapes. "
+                            "You can provide your own data set or select from pre-defined target spaces."})
 
     # ----------- CONFIGURATION SIDEBAR ----------- 
     # Streamlit app title
-    st.sidebar.markdown("# COMPASS\n") # could be replaced with an image logo later
+    st.sidebar.title("🧭 COMPASS") # could be replaced with an image logo later 
+    #st.sidebar.markdown("# COMPASS\n") 
     
     st.sidebar.markdown("""
-                        The **COMPA**rative chemical **S**pace **S**ystem (COMPASS) acts as a navigation tool for chemical space, 
+                        COMPASS (**COMPA**rative chemical **S**pace **S**ystem) acts as a navigation tool for chemical space, 
                         offering harmonized reference maps that support transparent visualisation of chemical datasets and model domains. 
                         By selecting a reference space (e.g., marketed chemicals, pharmaceuticals, PFAS), 
                         you can locate and explore chemical data sets in relation to known chemical landscapes.
