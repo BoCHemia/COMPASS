@@ -16,12 +16,13 @@ file_name = "drugbank_5.1.13"
 
 print("Getting started ...")
 
-df = pd.read_csv(os.path.join(input_path, folder_name, f"raw_{file_name}.csv"))
-df.rename(columns={"Common name": "PREFERRED_NAME",
-                   "CAS": "CASRN",
-                   "Standard InChI Key": "INCHIKEY",
-                   }, inplace=True)
-df_structures = df.dropna(subset=["INCHIKEY"]).reset_index(drop=True)
+df_raw = pd.read_csv(os.path.join(input_path, folder_name, f"raw_{file_name}.csv"))
+df_raw.rename(columns={"DrugBank ID": "DrugBank_ID",
+                        "Common name": "PREFERRED_NAME",
+                        "CAS": "CASRN",
+                        "Standard InChI Key": "INCHIKEY",}, inplace=True)
+
+df = df_raw[["DrugBank_ID", "PREFERRED_NAME","CASRN", "INCHIKEY"]]
 
 # -----------------------------
 # GET PUBCHEM DATA
@@ -30,14 +31,29 @@ df_structures = df.dropna(subset=["INCHIKEY"]).reset_index(drop=True)
 print("Retrieving PubChem data ...")
 
 output_file = os.path.join(temp_path, f"{file_name}_pubchem.csv")
-pubchem = get_pubchem_data(df_structures, 'INCHIKEY', 'CASRN', 'PREFERRED_NAME', output_file)
+pubchem = get_pubchem_data(df, output_file, 'DrugBank_ID', resume=True)
 
-df_pubchem = df_structures.merge(pubchem[["CID", "IUPAC", "INCHIKEY", "InChI", "SMILES"]], on="INCHIKEY", how="left")
-df_pubchem.fillna({'SMILES': ''}, inplace=True)
+df_pubchem = df.merge(pubchem[["DrugBank_ID", "IUPAC", "INCHI", "SMILES"]], on="DrugBank_ID", how="left")
 
 # intermediate - without classyfire
 df_pubchem = df_pubchem.drop_duplicates()  # - minimizing issue with duplicate INCHIKEYs
 df_pubchem.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_noCF.csv"), index=False)
+
+# -----------------------------
+# Standardize SMILES
+# -----------------------------
+df_std= standardize_structures(df_pubchem)
+
+print("Dropping ", df_std["INCHIKEY"].isna().sum(), " missing INCHIKEYs after standardization.")
+df_std = df_std.dropna(subset=["INCHIKEY"]).reset_index(drop=True)
+
+print(df_std.duplicated(subset=["INCHIKEY"]).sum(), " duplicate INCHIKEYs and ", 
+      df_std.duplicated(subset=["standardized SMILES"]).sum(), " duplicate canonical SMILES found after standardization.")
+
+# intermediate - without classyfire
+df_noCF = df_std.drop_duplicates(subset=["standardized SMILES"]).reset_index(drop=True)
+df_noCF.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_noCF.csv"), index=False)
+
 
 # -----------------------------
 # MERGE WITH CLASSYFIRE DATA
@@ -45,10 +61,14 @@ df_pubchem.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_noCF
 
 print("Merging with Classyfire data ...")
 classyfire = prepare_classyfire_data()
-df_classyfire = pd.merge(df_pubchem, classyfire, on='INCHIKEY', how='left')
+df_classyfire = pd.merge(df_std, classyfire, on='INCHIKEY', how='left')
 
 # intermediate - partial classyfire
+df_classyfire["num_missing"] = df_classyfire.isna().sum(axis=1)
+df_classyfire = (df_classyfire.sort_values("num_missing").drop_duplicates(subset='standardized SMILES', keep="first").drop(columns="num_missing"))
+
 df_classyfire.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_partial.csv"), index=False)
+
 
 # -----------------------------
 # SAVE OR REQUEST MISSING DATA
@@ -73,6 +93,10 @@ if len(df_missing)>0:
 
 else:
     print(f"Data preparation complete. Saving input_drugbank_5.1.13.csv.")
+
+    df_classyfire["num_missing"] = df_classyfire.isna().sum(axis=1)
+    df_classyfire = (df_classyfire.sort_values("num_missing").drop_duplicates(subset='standardized SMILES', keep="first").drop(columns="num_missing"))
+
     df_classyfire.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
 
     print("Shape of DrugBank dataframe:", df_classyfire.shape)

@@ -7,12 +7,12 @@ from modules.preprocessing import *
 # sys.stdout.reconfigure(line_buffering=True)
 
 #### input ####
-input_folder_name = "ZeroPM"
-input_data_name = "zeropm_partial"
+input_folder_name = "COCONUT"
+input_data_name = "coconut_partial"
 
-#### preprocessing and calculating fingerprints ####
+#### load preprocessed data and calculate fingerprints ####
 df = load_input_file(file_name=input_data_name, folder_name=input_folder_name)
-df_fingerprints = preprocess_data(df)
+df_fingerprints = calculate_fingerprints(df)
 save_fingerprints(df_fingerprints, folder_name=input_folder_name, file_name=input_data_name)
 
 #### load training_array from fingerprints file ####
