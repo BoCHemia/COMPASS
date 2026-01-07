@@ -1,7 +1,7 @@
 from modules.modeling import *
 from modules.visualizing import *
 
-###### Plot 1: Drugbank on its own (Superclass) #####
+###### Plot 1: Pesticides on its own (Superclass) #####
 input_folder = 'AgroTrak'
 input_file = 'agrotrak_zhang_2025_partial'
 coordinates = load_coordinates(folder_name=input_folder, file_name=input_file)
@@ -14,7 +14,7 @@ figure = plot_chemical_space(coordinates, nametag='AgroTrak Pesticides',
 output_filename = f'{input_file}_superclass'
 save_figure(figure, output_filename)
 
-###### Plot 2: Drugbank on ZeroPM (Superclass) #####
+###### Plot 2: Pesticides on ZeroPM (Superclass) #####
 # load reference coordinates
 reference_folder = 'ZeroPM'
 reference_file =  'zeropm_partial'

@@ -29,17 +29,24 @@ df = df_raw[["SUSPECTID", "PREFERRED_NAME", "INCHIKEY", "SMILES", "INCHI"]]
 
 df.isna().sum() # no NaN in any column
 
+print("Dropping ", df.duplicated().sum(), " duplicate rows.")
+df = df.drop_duplicates().reset_index(drop=True)
+
 # -----------------------------
 # Standardize SMILES
 # -----------------------------
 df_std= standardize_structures(df)
+df_std = standardize_structures(df)
 
-print(df_std.duplicated(subset=["INCHIKEY"]).sum(), " duplicate INCHIKEYs and ", 
-      df_std.duplicated(subset=["standardized SMILES"]).sum(), " duplicate canonical SMILES found after standardization.")
+print("Dropping ", df_std["standardized SMILES"].isna().sum(), " records with missing structures after standardization.")
+df_std = df_std.dropna(subset=["standardized SMILES"]).reset_index(drop=True)
+
+print(df_std.duplicated(subset=["INCHIKEY"]).sum(), " duplicate INCHIKEYs found after standardization.")
+print(df_std.duplicated(subset=["standardized SMILES"]).sum(), " duplicate or isomeric structures after standardization.")
 
 # intermediate - without classyfire
-df_noCF = df_std.drop_duplicates(subset=["standardized SMILES"]).reset_index(drop=True)
-df_noCF.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_noCF.csv"), index=False)
+# df_noCF = df_std.drop_duplicates(subset=["standardized SMILES"]).reset_index(drop=True)
+df_std.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_noCF.csv"), index=False)
 
 
 # -----------------------------
@@ -51,8 +58,8 @@ classyfire = prepare_classyfire_data()
 df_classyfire = pd.merge(df_std, classyfire, on='INCHIKEY', how='left')
 
 # intermediate - partial classyfire
-df_classyfire["num_missing"] = df_classyfire.isna().sum(axis=1)
-df_classyfire = (df_classyfire.sort_values("num_missing").drop_duplicates(subset='standardized SMILES', keep="first").drop(columns="num_missing"))
+#df_classyfire["num_missing"] = df_classyfire.isna().sum(axis=1)
+#df_classyfire = (df_classyfire.sort_values("num_missing").drop_duplicates(subset='standardized SMILES', keep="first").drop(columns="num_missing"))
 
 df_classyfire.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_partial.csv"), index=False)
 
@@ -78,11 +85,11 @@ if len(df_missing)>0:
     print(f"{len(df_missing)} entries missing Classyfire data. Please run Classyfire batch mode on the files in {out_dir} and add results to raw_classyfire.csv. Then re-run this script.")
 
 else:
-    print(f"Data preparation complete. Saving input_coconut.csv.")
+    print(f"Data preparation complete. Saving input_pfas_nist.csv.")
 
-    df_classyfire["num_missing"] = df_classyfire.isna().sum(axis=1)
-    df_classyfire = (df_classyfire.sort_values("num_missing").drop_duplicates(subset='standardized SMILES', keep="first").drop(columns="num_missing"))
+    #df_classyfire["num_missing"] = df_classyfire.isna().sum(axis=1)
+    #df_classyfire = (df_classyfire.sort_values("num_missing").drop_duplicates(subset='standardized SMILES', keep="first").drop(columns="num_missing"))
 
     df_classyfire.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
 
-    print("Shape of COCONUT dataframe:", df_classyfire.shape)
+    print("Shape of PFAS dataframe:", df_classyfire.shape)

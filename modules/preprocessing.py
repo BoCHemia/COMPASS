@@ -52,15 +52,17 @@ def standardize_structures(df):
     :param df: Description
     """
 
-    if not 'standardized SMILES' in df.columns:
-        df['standardized SMILES'] = standardize_smiles_df(df, 'SMILES')
+    df_std = df.copy()
 
-    if not "INCHIKEY" in df.columns:
-        df['INCHIKEY'] = get_inchikeys_df(df, 'standardized SMILES')
-    elif df['INCHIKEY'].isna().any():
-        df.fillna({'INCHIKEY': get_inchikeys_df(df, 'standardized SMILES')}, inplace=True)
+    if not 'standardized SMILES' in df_std.columns:
+        df_std['standardized SMILES'] = standardize_smiles_df(df_std, 'SMILES')
+
+    if not "INCHIKEY" in df_std.columns:
+        df_std['INCHIKEY'] = get_inchikeys_df(df_std, 'SMILES')
+    elif df_std['INCHIKEY'].isna().any():
+        df_std.fillna({'INCHIKEY': get_inchikeys_df(df_std, 'SMILES')}, inplace=True)
         
-    return df
+    return df_std
 
 
 def calculate_fingerprints(df, radius=2, fpSize=1024, **kwargs):
@@ -625,13 +627,20 @@ def calculate_descriptors_morgan_df(df, col_smiles="standardized SMILES", **kwar
     d = df[col_smiles].apply(calculate_descriptors_morgan, **kwargs)
     return pd.DataFrame.from_records(d)
 
+
 def get_inchikeys(smiles):
+
     mol = myMolFromSmiles(smiles)
 
+    if pd.isna(smiles) or (smiles == "") or (mol is None):
+        return np.nan
+    
     return Chem.MolToInchiKey(mol)
+
 
 def get_inchikeys_df(df, col_smiles):
     inchikey_df = df[col_smiles].apply(get_inchikeys)
+    inchikey_df = inchikey_df.replace("", np.nan) # hack to avoid coersion to empty strings
 
     return inchikey_df
 
