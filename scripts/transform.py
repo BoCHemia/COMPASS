@@ -2,13 +2,13 @@ from modules.modeling import *
 from modules.preprocessing import *
 
 # load tSNE model object
-reference_file_name = "coconut"
-model = load_model(reference_file_name, use_joblib=False, from_zip=False)
+reference_file_name = "drugbank_5.1.13_partial"
+model = load_model(reference_file_name, use_joblib=True, from_zip=False)
 offset = load_model_offset(reference_file_name) # add to app.py
 
 # load data to plot
-folder_name = "AgroTrak"
-file_name = 'zhang_2025_partial' # enter here the name of the input data set to transform
+folder_name = "ZeroPM"
+file_name = 'zeropm_partial' # enter here the name of the input data set to transform
 
 # new_df = load_input_file(file_name, folder_name=folder_name)
 # new_fingerprints = preprocess_data(new_df)

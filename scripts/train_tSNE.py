@@ -7,8 +7,8 @@ from modules.preprocessing import *
 # sys.stdout.reconfigure(line_buffering=True)
 
 #### input ####
-input_folder_name = "COCONUT"
-input_data_name = "coconut_partial"
+input_folder_name = "AgroTrak"
+input_data_name = "agrotrak_zhang_2025_partial"
 
 #### load preprocessed data and calculate fingerprints ####
 df = load_input_file(file_name=input_data_name, folder_name=input_folder_name)
