@@ -1,5 +1,7 @@
 import os
 import pickle
+from unittest.mock import inplace
+
 import numpy as np
 import pandas as pd
 from openTSNE.sklearn import TSNE
@@ -252,6 +254,61 @@ def transform_target(model, fingerprints):
     coordinates_target = model.transform(X)
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     coordinates_df.index = fingerprints['INCHIKEY']
+    return coordinates_df
+
+def lookup_target(fingerprints, reference_data):
+    """
+    Looks up TSNE coordinates in the reference data.
+    If the compound cannot be found, NaN is provided instead of spatial coordinates
+
+    :param fingerprints: fingerprints dataframe
+    :param reference_data: reference data with TSNE coordinates
+    :return: dataframe with TSNE coordinates for compounds present in the reference data
+    """
+    fingerprints.dropna(inplace=True)
+    # create a lookup map with
+    lookup_map = reference_data.loc[:,['TSNE1', 'TSNE2']]
+    lookup_map['INCHIKEY_first14'] = reference_data['INCHIKEY'].str.split('-', expand=True)[0]
+    print("Lookup map loaded:", lookup_map.shape)
+    lookup_map.drop_duplicates(subset=['INCHIKEY_first14'], inplace=True)
+
+    # fetch coordinates where available based on first 14 letters inchikey (basic structure)
+    print("Lookup map after removing duplicates based on first14:", lookup_map.shape)
+    fingerprints['INCHIKEY_first14'] = fingerprints['INCHIKEY'].str.split('-', expand=True)[0]
+
+    # populate coordinates from lookup map first
+    lookup_coordinates_df = fingerprints.loc[:,['INCHIKEY_first14', 'INCHIKEY']]
+    lookup_coordinates_df = lookup_coordinates_df.merge(lookup_map, how='left', on='INCHIKEY_first14')
+    lookup_coordinates_df.index = fingerprints['INCHIKEY']
+    return lookup_coordinates_df
+
+def lookup_or_transform_target(model, fingerprints, reference_data):
+    """
+    Looks up TSNE coordinates in the reference data. For compounds that could not be found in the reference,
+    TSNE coordinates are calculated via the provided tSNE model.
+
+    :param model: tSNE model object
+    :param fingerprints: fingerprints dataframe
+    :param reference_data: reference data with TSNE coordinates
+    :return: coordinates for all fingerprints
+    """
+    # lookup coordinates in reference_data
+    lookup_coordinates_df = lookup_target(fingerprints, reference_data)
+
+    # Get compounds for which no coordinates could be found in the reference space
+    remaining_compounds_df = lookup_coordinates_df[lookup_coordinates_df['TSNE1'].isnull()].drop(columns=['TSNE1','TSNE2'])
+    print(f'{remaining_compounds_df.shape[0]} compounds could not be found in the reference space and need to be transformed')
+
+    # get fingerprints for wich TSNE coordinates are missing
+    remaining_compounds_df.drop(columns=['INCHIKEY', 'INCHIKEY_first14'], inplace=True)
+    transform_fingerprints = remaining_compounds_df.merge(fingerprints, how='left', on='INCHIKEY')
+
+    # transform fingerprints
+    transform_coordinates_df =  transform_target(model, transform_fingerprints)
+
+    # add coordinates from lookup
+    lookup_coordinates = lookup_coordinates_df.drop(columns=['INCHIKEY','INCHIKEY_first14']).dropna(subset=['TSNE1'])
+    coordinates_df = pd.concat([transform_coordinates_df, lookup_coordinates], axis=0)
     return coordinates_df
 
 def build_surrogate_model(folder_name, file_name, df_fingerprints):
