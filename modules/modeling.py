@@ -158,6 +158,17 @@ def load_surrogate_model(file_name):
 
 
 
+def save_model_offset(offset, file_name):
+    offset_path = os.path.join(PROJECT_ROOT, "models", file_name + '_offset.csv')
+    offset.to_csv(offset_path, index=False)
+    print(f"Saved model offset to {offset_path}")
+
+def load_model_offset(file_name):
+    offset_path = os.path.join(PROJECT_ROOT, "models", file_name + '_offset.csv')
+    offset = pd.read_csv(offset_path)
+    print(f"Loaded model offset from {offset_path}")
+    return offset
+
 def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     """
     Save coordinates to output file in data folder (data/[folder_name]/output_[file_name].csv)
@@ -181,7 +192,7 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
         file_name += "_on_" + reference_name
     # save df, annotated with TSNE coordinates
     output_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
-    df_coordinates.to_csv(output_path, index=True)
+    df_coordinates.to_csv(output_path, index=False)
     print(f"Saved coordinates to {output_path}")
 
     
@@ -220,7 +231,7 @@ def load_model(file_name, from_zip=False, use_joblib=False):
 # Modeling (for the target space)
 # -----------------------------
 
-def transform_target(model, fingerprints):
+def transform_target(model, fingerprints, **kwargs):
     
     """
     Transforms target fingerprints to embed into trained t-SNE space
@@ -231,7 +242,7 @@ def transform_target(model, fingerprints):
     fingerprints.dropna(inplace=True)
     X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
     print("Starting to transform")
-    coordinates_target = model.transform(X)
+    coordinates_target = model.transform(X, **kwargs)
     print("Transforming worked")
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     coordinates_df.index = fingerprints['INCHIKEY']
