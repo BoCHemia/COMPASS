@@ -11,7 +11,7 @@ folder_name = "input"
 file_name = "enviPath"
 
 # Function to load enviPath data from envipath.org
-def load_enviPath_data(from_csv = False, use_beta = False):
+def load_enviPath_data(from_csv = False, use_legacy=False):
     # where enviPath data is to be stored
     file_path = os.path.join(input_path, folder_name, f'input_{file_name}.csv')
 
@@ -22,12 +22,11 @@ def load_enviPath_data(from_csv = False, use_beta = False):
     # Connect to enviPath and fetch data
     # Requires the additional installation fo enviPath_python
     from enviPath_python import enviPath
-    if use_beta:
-        eP = enviPath('https://beta.envipath.org/api/legacy/', new_api=True) # for future
-        eP.login(input("enviPath username:"), getpass())
-        tag = 'beta.'
+    if use_legacy:
+        eP = enviPath('https://legacy.envipath.org/', new_api=False)
+        tag = 'legacy.'
     else:
-        eP = enviPath('https://envipath.org')
+        eP = enviPath('https://envipath.org', new_api=True)
         tag= ''
 
     # fetch packages
@@ -60,11 +59,11 @@ def load_enviPath_data(from_csv = False, use_beta = False):
 
 ############ Main #################
 # load enviPath data
-new_df = load_enviPath_data(from_csv=True)
+new_df = load_enviPath_data(from_csv=False)
 
 # preprocess
 new_fingerprints = preprocess_data(new_df)
-save_fingerprints(fingerprints=new_fingerprints, file_name=file_name)
+save_fingerprints(fingerprints=new_fingerprints, file_name=file_name, folder_name=folder_name)
 
 # transform on ZeroPM
 reference_folder = 'ZeroPM'
@@ -85,7 +84,7 @@ coordinates = lookup_or_transform_target(model, new_fingerprints, reference_coor
 save_coordinates(coordinates=coordinates,
                  folder_name=folder_name,
                  file_name=file_name,
-                 reference_data=reference_data_name)
+                 reference_name=reference_data_name)
 annotated_coordinates = load_coordinates(folder_name, file_name, reference_data=reference_data_name) #enviPath coordinates
 
 # visualize on reference space

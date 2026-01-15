@@ -214,12 +214,12 @@ def load_model(file_name, from_zip=False, use_joblib=False):
 # Modeling (for the target space)
 # -----------------------------
 
-def transform_target(model, fingerprints):
+def transform_target(model, fingerprints, **kwargs):
     """
     Transform fingerprints using the provided tSNE model
 
     :param model: trained tSNE model
-    :param fingerprints: fingerprint matrix, including a colunnd "INCHIKEY"
+    :param fingerprints: fingerprint matrix, including a column "INCHIKEY"
     :return: coordinates of the input compounds in the tSNE space
     """
     # Prepare boolean fingerprint array
