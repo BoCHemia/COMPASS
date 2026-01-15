@@ -1,5 +1,7 @@
 import os
 import pickle
+from unittest.mock import inplace
+
 import numpy as np
 import pandas as pd
 from openTSNE.sklearn import TSNE
@@ -11,15 +13,9 @@ import zipfile
 import yaml
 import joblib
 
-### Some comments:
-# - Xsmall is just a smaller subset of the training data to make some steps faster
-# - Caching was implemented by Sylvain. It is useful but we need to rename it.
-# - The model is meant to be pickled, not really in the cache sense.
-# -  I am still not so clear whether we really want/need separate preprocessing, modeling and visualization modules.
-
 
 # -----------------------------
-# utils? 
+# utils
 # -----------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent 
@@ -136,27 +132,6 @@ def save_model(model, file_name, pickle=True, zip=True, use_joblib=False):
                 zipf.write(model_path)
             print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
 
-def save_surrogate_model(model1, model2, file_name):
-    """
-    Save model as pickle to temp and as zipped pickle to output
-    :param model: trained tSNE model
-    :param file_name: name tag of the original data file (e.g. for 'data_market.csv' the file_name would be 'data_market')
-    """
-    ensure_dirs()
-
-    # Saving trained tSNE object to temp folder
-    model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_surrogate.zlib')
-    print("--> Joblib surrogate models object")
-    joblib.dump((model1, model2), model_path, compress=5)
-    print(f"Saved fitted tSNE embedding to {model_path}")
-
-def load_surrogate_model(file_name):
-    print("--> Loading surrogate model")
-    model_path = os.path.join(PROJECT_ROOT, "temp", file_name + '_trained_surrogate.zlib')
-    model1, model2 = joblib.load(filename=model_path)
-    return model1, model2
-
-
 
 def save_model_offset(offset, file_name):
     offset_path = os.path.join(PROJECT_ROOT, "models", file_name + '_offset.csv')
@@ -197,6 +172,14 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
 
     
 def load_coordinates(folder_name, file_name, reference_data=""):
+    """
+    Load tSNE coordinates from file
+
+    :param folder_name: name of the folder
+    :param file_name: name tag
+    :param reference_data: If indicated, load coordinates of mapping of "file_name" on "reference_data"
+    :return: tSNE coordinates
+    """
     if reference_data:
         file_name += f'_on_{reference_data}'
     coordinates_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
@@ -231,14 +214,16 @@ def load_model(file_name, from_zip=False, use_joblib=False):
 # Modeling (for the target space)
 # -----------------------------
 
-def transform_target(model, fingerprints, **kwargs):
-    
+def transform_target(model, fingerprints):
     """
-    Transforms target fingerprints to embed into trained t-SNE space
-    """
+    Transform fingerprints using the provided tSNE model
 
+    :param model: trained tSNE model
+    :param fingerprints: fingerprint matrix, including a colunnd "INCHIKEY"
+    :return: coordinates of the input compounds in the tSNE space
+    """
     # Prepare boolean fingerprint array
-    print("--> Calculating mapping ")
+    print(f"--> Calculating mapping for {fingerprints.shape[0]} compounds")
     fingerprints.dropna(inplace=True)
     X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
     print("Starting to transform")
@@ -249,35 +234,59 @@ def transform_target(model, fingerprints, **kwargs):
 
     return coordinates_df
 
-def build_surrogate_model(folder_name, file_name, df_fingerprints):
-    print('--> build surrogate model')
-    # fingerprints
-    df_fingerprints.dropna(inplace=True)
-    df_fingerprints.drop_duplicates(subset=['INCHIKEY'], inplace=True)
+def lookup_target(fingerprints, reference_data):
+    """
+    Looks up TSNE coordinates in the reference data.
+    If the compound cannot be found, NaN is provided instead of spatial coordinates
 
-    # target variables: TSNE coordinates
-    df = load_coordinates(folder_name, file_name)
-    df.drop_duplicates(subset=['INCHIKEY'], inplace = True)
-    Y1 = df['TSNE1']
-    Y2 = df['TSNE2']
-
-    # Train random forests - takes ~40mins/model
-    X = np.array(df_fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
-    print("Fitting model 1...")
-    model_1 = RandomForestRegressor(n_estimators=100, random_state=42).fit(X, Y1)
-    print("Fitting model 2...")
-    model_2 = RandomForestRegressor(n_estimators=100, random_state=42).fit(X, Y2)
-    return model_1, model_2
-
-def transform_target_surrogate(model1, model2, fingerprints):
-    # Prepare boolean fingerprint array
-    print("Predict TSNE coordinates with surrogate model")
+    :param fingerprints: fingerprints dataframe
+    :param reference_data: reference data with TSNE coordinates
+    :return: dataframe with TSNE coordinates for compounds present in the reference data
+    """
     fingerprints.dropna(inplace=True)
-    X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
-    tsne1 = model1.predict(X)
-    tsne2 = model2.predict(X)
-    coordinates_df = pd.DataFrame()
-    coordinates_df['TSNE1'] = tsne1.T
-    coordinates_df['TSNE2'] = tsne2.T
-    coordinates_df.index = fingerprints['INCHIKEY']
+    # create a lookup map with
+    lookup_map = reference_data.loc[:,['TSNE1', 'TSNE2']]
+    lookup_map['INCHIKEY_first14'] = reference_data['INCHIKEY'].str.split('-', expand=True)[0]
+    print("Lookup map loaded:", lookup_map.shape)
+    lookup_map.drop_duplicates(subset=['INCHIKEY_first14'], inplace=True)
+
+    # fetch coordinates where available based on first 14 letters inchikey (basic structure)
+    print("Lookup map after removing duplicates based on first14:", lookup_map.shape)
+    fingerprints['INCHIKEY_first14'] = fingerprints['INCHIKEY'].str.split('-', expand=True)[0]
+
+    # populate coordinates from lookup map first
+    lookup_coordinates_df = fingerprints.loc[:,['INCHIKEY_first14', 'INCHIKEY']]
+    lookup_coordinates_df = lookup_coordinates_df.merge(lookup_map, how='left', on='INCHIKEY_first14')
+    lookup_coordinates_df.index = fingerprints['INCHIKEY']
+    lookup_coordinates_df.drop(columns=['INCHIKEY', 'INCHIKEY_first14'], inplace=True)
+    found_compounds = lookup_coordinates_df.dropna(subset=['TSNE1']).shape[0]
+    print(f'{found_compounds} compounds (out of {fingerprints.shape[0]}) could be found in the reference space')
+    return lookup_coordinates_df
+
+def lookup_or_transform_target(model, fingerprints, reference_data):
+    """
+    Looks up TSNE coordinates in the reference data. For compounds that could not be found in the reference,
+    TSNE coordinates are calculated via the provided tSNE model.
+
+    :param model: tSNE model object
+    :param fingerprints: fingerprints dataframe
+    :param reference_data: reference data with TSNE coordinates
+    :return: coordinates for all input compounds
+    """
+    # lookup coordinates in reference_data
+    lookup_coordinates_df = lookup_target(fingerprints, reference_data)
+
+    # Get compounds for which no coordinates could be found in the reference space
+    remaining_compounds_df = lookup_coordinates_df[lookup_coordinates_df['TSNE1'].isnull()].drop(columns=['TSNE1','TSNE2'])
+    print(f'The remaining {remaining_compounds_df.shape[0]} compounds (out of {fingerprints.shape[0]}) need to be transformed')
+
+    # get fingerprints for wich TSNE coordinates are missing
+    transform_fingerprints = remaining_compounds_df.merge(fingerprints, how='left', on='INCHIKEY')
+
+    # transform fingerprints
+    transform_coordinates_df =  transform_target(model, transform_fingerprints)
+
+    # add coordinates from lookup
+    lookup_coordinates = lookup_coordinates_df.dropna(subset=['TSNE1'])
+    coordinates_df = pd.concat([transform_coordinates_df, lookup_coordinates], axis=0)
     return coordinates_df

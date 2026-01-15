@@ -106,8 +106,8 @@ def plot_chemical_space(df, nametag = '', map_on=None,
     print(f"Mapping {nametag} data...")
 
     if column_for_color_map is not None: # coloring by column
-        assert column_for_color_map in df.columns, f"Column {column_for_color_map} does not exist in dataframe"
-
+        assert column_for_color_map in df.columns, (f"Column {column_for_color_map} does not exist in dataframe. "
+                                                    f"Available columns: {df.columns.tolist()}")
         if color_type== 'discrete': # discrete coloring
             print("Use {} column to color map".format(column_for_color_map))
             color_discrete_map = get_color_map(palette, df, column_for_color_map)
