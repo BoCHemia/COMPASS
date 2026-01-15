@@ -37,7 +37,6 @@ def load_enviPath_data(from_csv = False, use_beta = False):
     sediment = eP.get_package(f'https://{tag}envipath.org/package/f05e38d8-e9b4-4c3e-b0d8-9ab29966eccf')
     pfas = eP.get_package(f'https://{tag}envipath.org/package/d2cfb5af-4ea0-4375-9a48-f2e776e44636')
     package_list = [bbd, soil, sludge, sediment, pfas]
-    # package_list = [pfas]
 
     # download all data
     D = {}
@@ -61,7 +60,7 @@ def load_enviPath_data(from_csv = False, use_beta = False):
 
 ############ Main #################
 # load enviPath data
-new_df = load_enviPath_data(from_csv=True)
+new_df = load_enviPath_data(from_csv=False)
 
 # preprocess
 new_fingerprints = preprocess_data(new_df)
@@ -80,8 +79,17 @@ reference_coordinates = load_coordinates(reference_folder, reference_data_name)
 
 # Load reference model and transform enviPath compounds
 model = load_model(reference_data_name, from_zip=False)
+import time
+start_time = time.time()
 coordinates = lookup_or_transform_target(model, new_fingerprints, reference_coordinates)
-# coordinates = transform_target(model, new_fingerprints)
+print('runtime with lookup:')
+print("--- %s iseconds ---" % (time.time() - start_time))
+
+start_time = time.time()
+coordinates = transform_target(model, new_fingerprints)
+print('runtime without lookup:')
+print("--- %s seconds ---" % (time.time() - start_time))
+
 save_coordinates(coordinates=coordinates,
                  folder_name=folder_name,
                  file_name=file_name,

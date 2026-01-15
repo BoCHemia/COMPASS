@@ -211,7 +211,7 @@ def load_model(file_name, from_zip = False, use_joblib=False):
 # Modeling (for the target space)
 # -----------------------------
 
-def transform_tsne_embedding(tsne, df_fingerprints, col_index='INCHIKEY'):
+def transform_tsne_embedding(tsne, df_fingerprints, col_index='INCHIKEY'): #todo: remove? it looks like this function is not used
     """
     Transforms target fingerprints to embed into trained t-SNE space
     """
@@ -247,8 +247,15 @@ def transform_target(embedding_train,           # todo: code from José - I simp
     return embedding_target_chemicals, target_chemicals_space
 
 def transform_target(model, fingerprints):
+    """
+    Transform fingerprints using the provided tSNE model
+
+    :param model: trained tSNE model
+    :param fingerprints: fingerprint matrix, including a colunnd "INCHIKEY"
+    :return: coordinates of the input compounds in the tSNE space
+    """
     # Prepare boolean fingerprint array
-    print("--> Calculating mapping ")
+    print(f"--> Calculating mapping for {fingerprints.shape[0]} compounds")
     fingerprints.dropna(inplace=True)
     X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
     coordinates_target = model.transform(X)
@@ -290,14 +297,14 @@ def lookup_or_transform_target(model, fingerprints, reference_data):
     :param model: tSNE model object
     :param fingerprints: fingerprints dataframe
     :param reference_data: reference data with TSNE coordinates
-    :return: coordinates for all fingerprints
+    :return: coordinates for all input compounds
     """
     # lookup coordinates in reference_data
     lookup_coordinates_df = lookup_target(fingerprints, reference_data)
 
     # Get compounds for which no coordinates could be found in the reference space
     remaining_compounds_df = lookup_coordinates_df[lookup_coordinates_df['TSNE1'].isnull()].drop(columns=['TSNE1','TSNE2'])
-    print(f'{remaining_compounds_df.shape[0]} compounds could not be found in the reference space and need to be transformed')
+    print(f'{remaining_compounds_df.shape[0]} compounds (out of {fingerprints.shape[0]}) could not be found in the reference space and need to be transformed')
 
     # get fingerprints for wich TSNE coordinates are missing
     remaining_compounds_df.drop(columns=['INCHIKEY', 'INCHIKEY_first14'], inplace=True)
