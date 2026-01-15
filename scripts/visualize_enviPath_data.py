@@ -60,7 +60,7 @@ def load_enviPath_data(from_csv = False, use_beta = False):
 
 ############ Main #################
 # load enviPath data
-new_df = load_enviPath_data(from_csv=False)
+new_df = load_enviPath_data(from_csv=True)
 
 # preprocess
 new_fingerprints = preprocess_data(new_df)
@@ -79,17 +79,9 @@ reference_coordinates = load_coordinates(reference_folder, reference_data_name)
 
 # Load reference model and transform enviPath compounds
 model = load_model(reference_data_name, from_zip=False)
-import time
-start_time = time.time()
+
+# Get tSNE coordinates for input molecules
 coordinates = lookup_or_transform_target(model, new_fingerprints, reference_coordinates)
-print('runtime with lookup:')
-print("--- %s iseconds ---" % (time.time() - start_time))
-
-start_time = time.time()
-coordinates = transform_target(model, new_fingerprints)
-print('runtime without lookup:')
-print("--- %s seconds ---" % (time.time() - start_time))
-
 save_coordinates(coordinates=coordinates,
                  folder_name=folder_name,
                  file_name=file_name,
