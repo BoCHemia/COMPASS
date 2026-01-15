@@ -62,7 +62,7 @@ input_folder = 'DrugBank'
 input_file = 'drugbank_5.1.13_partial'
 new_coordinates = load_coordinates(folder_name=input_folder, file_name=input_file, reference_data=reference_file)
 
-figure = plot_chemical_space(reference_coordinates, nametag='COCONIT reference space', hover_name='PREFERRED_NAME', 
+figure = plot_chemical_space(reference_coordinates, nametag='COCONUT reference space', hover_name='PREFERRED_NAME', 
                              hover_data=['SMILES'])
 figure = plot_chemical_space(new_coordinates, nametag='DrugBank', map_on=figure,
                         hover_name='PREFERRED_NAME', hover_data=['Superclass', 'Class', 'Subclass', 'SMILES'],

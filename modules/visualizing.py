@@ -1,6 +1,7 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import os
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
@@ -17,7 +18,39 @@ def get_color_map(palette, df, column_for_color_map):
     :return: dictionary where categories are the keys, and colors are the values
     """
     # categories = df[column_for_color_map].unique()
-    categories = df[column_for_color_map].value_counts().index.tolist() # sort by frequency
+    if column_for_color_map=="Superclass": # fixed order and categories for ClassyFire Superclass
+        categories = ['Lipids and lipid-like molecules',
+                        'Organoheterocyclic compounds',
+                        'Benzenoids',
+                        'Hydrocarbons',
+                        'Hydrocarbon derivatives',
+                        'Organic acids and derivatives',
+                        'Organic nitrogen compounds',
+                        'Organic oxygen compounds',
+                        'Organohalogen compounds',
+                        'Organosulfur compounds',
+                        'Organophosphorus compounds',
+                        'Alkaloids and derivatives',
+                        'Phenylpropanoids and polyketides',
+                        'Lignans, neolignans and related compounds',
+                        'Nucleosides, nucleotides, and analogues',
+                        'Organometallic compounds',
+                        'Mixed metal/non-metal compounds',
+                        'Homogeneous metal compounds',
+                        'Homogeneous non-metal compounds',
+                        'Inorganic salts',
+                        'Miscellaneous inorganic compounds',
+                        'not assigned',
+                        'Organic 1,3-dipolar compounds',
+                        'Acetylides',
+                        'Allenes',
+                        'Carbides',
+                        'Organic Polymers',
+                        'Organic salts',
+                        'Organic cations',
+                        'Organic anions',]
+    else:
+        categories = df[column_for_color_map].value_counts().index.tolist() # sort by frequency
 
     if type(palette) == str:
         # colors = px.colors.sample_colorscale(palette, len(categories)) 
@@ -40,6 +73,7 @@ def get_color_map(palette, df, column_for_color_map):
     else:
         raise ValueError("The provided palette could not be parsed:", palette)
     return color_map
+
 
 
 
@@ -72,8 +106,8 @@ def plot_chemical_space(df, nametag = '', map_on=None,
     print(f"Mapping {nametag} data...")
 
     if column_for_color_map is not None: # coloring by column
-        assert column_for_color_map in df.columns, f"Column {column_for_color_map} does not exist in dataframe"
-
+        assert column_for_color_map in df.columns, (f"Column {column_for_color_map} does not exist in dataframe. "
+                                                    f"Available columns: {df.columns.tolist()}")
         if color_type== 'discrete': # discrete coloring
             print("Use {} column to color map".format(column_for_color_map))
             color_discrete_map = get_color_map(palette, df, column_for_color_map)
@@ -87,11 +121,12 @@ def plot_chemical_space(df, nametag = '', map_on=None,
             input_fig.update_traces(showlegend=False)
             for c in color_discrete_map:
                 input_fig.add_trace(go.Scatter(x=[None], y=[None],
-                    mode='markers', marker=dict(color=color_discrete_map[c], size=12, opacity=1, symbol=symbol),
+                    mode='markers', marker=dict(color=color_discrete_map[c], size=min(size*4, 10), opacity=1, symbol=symbol),
                     legendgroup=c, showlegend=True, name=c))
 
         elif color_type== 'continuous': # continuous coloring
             print("Use {} column to color map".format(column_for_color_map))
+
             assert type(palette) == str, "The provided continuous palette must be plotly palette name"
             color_continuous_scale = palette
             input_fig = px.scatter(df, x="TSNE1", y="TSNE2",
@@ -114,12 +149,19 @@ def plot_chemical_space(df, nametag = '', map_on=None,
         input_fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', 
                                        marker=dict(color=color, size=12, opacity=1),
                                        legendgroup=nametag, showlegend=True, name=nametag))
-
+    
+    # build custom hovertemplate
+    hovertemplate = ("<b>%{hovertext}</b><br>"
+                     "TSNE=(%{x}, %{y})<br>")
+    for i, col in enumerate(hover_data):
+        hovertemplate += f"{col}: %{{customdata[{i}]}}<br>"
+    hovertemplate += "<extra></extra>"
+    input_fig.update_traces(hovertemplate=hovertemplate, hoverlabel=dict(align="left"))
     
     # merge data
     if map_on is not None:
         fig = map_on
-        merged_fig = go.Figure(data=fig.data + input_fig.data)
+        merged_fig = go.Figure(data=fig.data + input_fig.data, layout=input_fig.layout)
     else:
         merged_fig = input_fig
 
@@ -128,8 +170,8 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
     merged_fig.update_layout(
         margin=dict(l=40, r=40, t=40, b=40),
-        paper_bgcolor='white',
-        plot_bgcolor='white',
+        # paper_bgcolor='white',
+        # plot_bgcolor='white',
         font_color='black',
         xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False,
                     fixedrange=False),
@@ -138,15 +180,41 @@ def plot_chemical_space(df, nametag = '', map_on=None,
         # align legend look 
         legend_tracegroupgap=0, 
         legend_itemsizing='constant',
-        title="",
+        title='',
         font=dict(
             family="Arial",
             size=12,
-            color="black"
-        ),)
+            color="black"),)
 
     return merged_fig
 
+
+def plot_treemap(df, palette='Alphabet'):
+    """
+    Map ClassyFire classes as treemap
+
+    :param df: dataframe with ClassyFire annotations
+    :param palette: color palette for treemap
+    :return: figure object
+    """
+
+    df_treemap = df[["Superclass", "Class", "Subclass"]].dropna(thresh=3).fillna("not assigned")
+    color_discrete_map = get_color_map(palette, df_treemap, "Superclass")
+
+    figure = px.treemap(df_treemap, path=["Superclass", "Class", "Subclass"], color='Superclass', 
+                            color_discrete_map=color_discrete_map)
+    
+    hovertemplate = (
+                        "<b>%{label}</b><br>" 
+                        "Parent: %{parent}<br>" 
+                        "ID: %{id}<br>"
+                        "Count: %{value}<br>"
+                        "<extra></extra>"
+                    )
+        
+    figure.update_traces(hovertemplate=hovertemplate)
+
+    return figure
 
 def save_figure(fig, file_name, format='.png', height=700, width=1200, scale=3):
     # todo: currently, the resolution of the exported figures is very low
@@ -173,8 +241,8 @@ def chemical_space_plot_grey(df,
         name='reference space')
 
     fig_grey.update_layout(
-        paper_bgcolor='white',
-        plot_bgcolor='white',
+        # paper_bgcolor='white',
+        # plot_bgcolor='white',
         font_color='black',
         xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False, 
                     fixedrange=False),
@@ -258,8 +326,8 @@ def map_input_data(fig, df, nametag = '',
     merged_fig = go.Figure(data=fig.data + input_fig.data)
 
     merged_fig.update_layout(
-        paper_bgcolor='white',
-        plot_bgcolor='white',
+        # paper_bgcolor='white',
+        # plot_bgcolor='white',
         font_color='black',
         xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False,
                     fixedrange=False),
@@ -270,59 +338,6 @@ def map_input_data(fig, df, nametag = '',
 
 
 # old code for reference
-def chemical_space_plot(df, hue_column, color_map, hover_name = 'PREFERRED_NAME', hover_data=['CASRN', 'Superclass', 'Class', 'Subclass'], train=False):
-    # Scatterplot
-    df.fillna('not assigned', inplace=True)
-    fig = px.scatter(df, x="TSNE1", y="TSNE2", color=hue_column,
-                    color_discrete_map=color_map,
-                    hover_name = hover_name,
-                    hover_data=hover_data,
-                    render_mode="webgl",
-                    height=700, width=1200
-                    )
-    fig.update_traces(showlegend=False)
-
-    if train==True:
-        symbol='diamond',
-        fig.update_traces(marker=dict(size=5, symbol='diamond' ,opacity=0.5, line=dict(width=0)))
-    else:
-        symbol='circle',
-        fig.update_traces(marker=dict(size=3, opacity=0.3, line=dict(width=0))) # plot markers
-
-    # Add custom legend traces to control the opacity of the legend markers
-    for c in color_map:
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None],
-            mode='markers',
-            marker=dict(color=color_map[c], symbol=symbol, size=12, opacity=1),
-            legendgroup=c,
-            showlegend=True,
-            name=c,
-        ))
-
-    fig.update_layout(
-        dragmode="zoom",
-        uirevision=True,
-        xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False, 
-                fixedrange=False),
-        yaxis=dict(title="TSNE2",visible=False, showgrid=False, zeroline=False, 
-                fixedrange=False),
-        modebar=dict(add=["zoom", "pan", "resetScale"]),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        legend_title_text=hue_column,
-        legend=dict(itemsizing='constant',
-                    itemwidth=30,  
-                    tracegroupgap=0,
-                    x=1.0,
-                    y=0.5,
-                    xanchor='left',
-                    yanchor='middle',
-                    orientation='v',
-                    font=dict(family="Arial", size=10)))
-                
-    return fig
-
 def get_color_class_mapping(folder_name, file_name):
     df_reference_tsne = pd.read_csv(os.path.join(PROJECT_ROOT, 'data', folder_name, f'output_{file_name}.csv'))
     # This is the palette I used in my publication for the top 15 most common ClassyFire Superclasses + some code snippets

@@ -8,6 +8,7 @@ temp/*
 modules/__pycache__/
 models/*
 __pycache__
+.DS_Store
 
 # Ignore all zip
 *.zip
@@ -17,10 +18,21 @@ __pycache__
 *.tiff
 *.jpeg
 
+
+# Ignore all the "heavy files" folders (data, models, temp)
+# app_data and output are expected to be fairly light and are not ignored
+data/*
+models/*
+temp/*
+uploads/*
+
+
 # Temporarily ignore fingerprints
 # data/fingerprints/*
 
-# Temporarily ignore DB folder content
+# Temporarily ignore DB folder contents
 data/ZeroPM/*
 data/COCONUT/*
-data/input/pfas_envipath.csv
+data/DrugBank/*
+data/AgroTrak/*
+data/PFAS/*
