@@ -13,15 +13,9 @@ import zipfile
 import yaml
 import joblib
 
-### Some comments:
-# - Xsmall is just a smaller subset of the training data to make some steps faster
-# - Caching was implemented by Sylvain. It is useful but we need to rename it.
-# - The model is meant to be pickled, not really in the cache sense.
-# -  I am still not so clear whether we really want/need separate preprocessing, modeling and visualization modules.
-
 
 # -----------------------------
-# utils? 
+# utils
 # -----------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent 
@@ -181,6 +175,14 @@ def save_coordinates(coordinates, folder_name, file_name, reference_data=""):
 
     
 def load_coordinates(folder_name, file_name, reference_data=""):
+    """
+    Load tSNE coordinates from file
+
+    :param folder_name: name of the folder
+    :param file_name: name tag
+    :param reference_data: If indicated, load coordinates of mapping of "file_name" on "reference_data"
+    :return: tSNE coordinates
+    """
     if reference_data:
         file_name += f'_on_{reference_data}'
     coordinates_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
@@ -318,37 +320,4 @@ def lookup_or_transform_target(model, fingerprints, reference_data):
     # add coordinates from lookup
     lookup_coordinates = lookup_coordinates_df.dropna(subset=['TSNE1'])
     coordinates_df = pd.concat([transform_coordinates_df, lookup_coordinates], axis=0)
-    return coordinates_df
-
-def build_surrogate_model(folder_name, file_name, df_fingerprints):
-    print('--> build surrogate model')
-    # fingerprints
-    df_fingerprints.dropna(inplace=True)
-    df_fingerprints.drop_duplicates(subset=['INCHIKEY'], inplace=True)
-
-    # target variables: TSNE coordinates
-    df = load_coordinates(folder_name, file_name)
-    df.drop_duplicates(subset=['INCHIKEY'], inplace = True)
-    Y1 = df['TSNE1']
-    Y2 = df['TSNE2']
-
-    # Train random forests - takes ~40mins/model
-    X = np.array(df_fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
-    print("Fitting model 1...")
-    model_1 = RandomForestRegressor(n_estimators=100, random_state=42).fit(X, Y1)
-    print("Fitting model 2...")
-    model_2 = RandomForestRegressor(n_estimators=100, random_state=42).fit(X, Y2)
-    return model_1, model_2
-
-def transform_target_surrogate(model1, model2, fingerprints):
-    # Prepare boolean fingerprint array
-    print("Predict TSNE coordinates with surrogate model")
-    fingerprints.dropna(inplace=True)
-    X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
-    tsne1 = model1.predict(X)
-    tsne2 = model2.predict(X)
-    coordinates_df = pd.DataFrame()
-    coordinates_df['TSNE1'] = tsne1.T
-    coordinates_df['TSNE2'] = tsne2.T
-    coordinates_df.index = fingerprints['INCHIKEY']
     return coordinates_df
