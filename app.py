@@ -35,7 +35,8 @@ def main():
     # Step 1: Select reference space
     st.sidebar.markdown("### 1: Select reference chemical space")
     available_ref_spaces_dict = {'DrugBank': ['5.1.13_partial'],  # should this automatically update with what is available in /data?
-                                    'PFAS': ['nist'],
+                                    'PFAS': ['nist_partial'],
+                                    'PlastChem': ['db_v1.01_partial'],
                                     'ZeroPM': ['partial'],
                                     'Coconut': None,
                                     'AgroTrak': ['zhang_2025_partial']}
@@ -333,7 +334,7 @@ def main():
                                             symbol='diamond', size=3, opacity=0.5)
             else:
                 figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
-                                            hover_name='INCHIKEY', hover_data=hover_data_available, color='black', 
+                                            hover_name='PREFERRED_NAME', hover_data=hover_data_available, color='black', 
                                             symbol='diamond', size=3, opacity=0.7)
         
         st.plotly_chart(figure, use_container_width=True)
