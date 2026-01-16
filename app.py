@@ -31,6 +31,7 @@ def main():
                         You can provide your own data set or select from pre-defined target spaces.
                 """)
     develop = st.sidebar.checkbox("dev")
+    darkmode = st.sidebar.checkbox("dark mode")
 
     # Step 1: Select reference space
     st.sidebar.markdown("### 1: Select reference chemical space")
@@ -314,8 +315,11 @@ def main():
                                         hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
                                         column_for_color_map=hue_ref, color_type=color_type_ref, palette=palette_ref)
         else:
+            color = 'lightgrey'
+            if darkmode:
+                color = 'dimgrey'
             figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space', 
-                                        hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available)
+                                        hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available, color=color)
         
         # - target set
         if target_space: 
@@ -332,8 +336,11 @@ def main():
                                             column_for_color_map=hue_target, color_type=color_type_target, palette=palette_target,
                                             symbol='diamond', size=3, opacity=0.5)
             else:
+                color = 'black'
+                if darkmode:
+                    color = 'white'
                 figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
-                                            hover_name='INCHIKEY', hover_data=hover_data_available, color='black', 
+                                            hover_name='INCHIKEY', hover_data=hover_data_available, color=color,
                                             symbol='diamond', size=3, opacity=0.7)
         
         st.plotly_chart(figure, use_container_width=True)
