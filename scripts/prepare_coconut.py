@@ -35,7 +35,7 @@ df = df_raw[["COCONUT_ID", "INCHIKEY", "SMILES", "INCHI"]]
 df.isna().sum() # no NaN in any column
 
 # -----------------------------
-# GET PUBCHEM DATA
+# GET PUBCHEM DATA -- get names
 # -----------------------------
 
 # Warning: Coconut has >400K substances, hence this part takes ~10 days from scratch
@@ -52,6 +52,7 @@ df_pubchem = df_pubchem.drop_duplicates().reset_index(drop=True)
 # Standardize SMILES
 # -----------------------------
 df_std = standardize_structures(df_pubchem)
+df_std["standardized SMILES"] = df_std["standardized SMILES"].replace('', np.nan)
 
 print("Dropping ", df_std["standardized SMILES"].isna().sum(), " records with missing structures after standardization.")
 df_std = df_std.dropna(subset=["standardized SMILES"]).reset_index(drop=True)

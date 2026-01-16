@@ -7,8 +7,8 @@ from modules.preprocessing import *
 # sys.stdout.reconfigure(line_buffering=True)
 
 #### input ####
-input_folder_name = "AgroTrak"
-input_data_name = "agrotrak_zhang_2025_partial"
+input_folder_name = "COCONUT"
+input_data_name = "coconut_partial"
 
 #### load preprocessed data and calculate fingerprints ####
 df = load_input_file(file_name=input_data_name, folder_name=input_folder_name)
@@ -30,3 +30,11 @@ save_coordinates(coordinates=coordinates, folder_name=input_folder_name, file_na
 coordinates_re = transform_target(trained_model, df_fingerprints)
 offset = coordinates_re.mean().to_frame().T
 save_model_offset(offset, input_data_name)
+
+# Training
+# AgroTrak: done
+# COCONUT: done
+# DrugBank: done
+# PFAS: done
+# PlastChem: done
+# ZeroPM: done
