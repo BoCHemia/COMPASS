@@ -264,7 +264,7 @@ def lookup_target(fingerprints, reference_data):
     print(f'{found_compounds} compounds (out of {fingerprints.shape[0]}) could be found in the reference space')
     return lookup_coordinates_df
 
-def lookup_or_transform_target(model, fingerprints, reference_data):
+def lookup_or_transform_target(model, fingerprints, offset, reference_data):
     """
     Looks up TSNE coordinates in the reference data. For compounds that could not be found in the reference,
     TSNE coordinates are calculated via the provided tSNE model.
@@ -285,7 +285,7 @@ def lookup_or_transform_target(model, fingerprints, reference_data):
     transform_fingerprints = remaining_compounds_df.merge(fingerprints, how='left', on='INCHIKEY')
 
     # transform fingerprints
-    transform_coordinates_df =  transform_target(model, transform_fingerprints)
+    transform_coordinates_df =  transform_target(model, transform_fingerprints, offset)
 
     # add coordinates from lookup
     lookup_coordinates = lookup_coordinates_df.dropna(subset=['TSNE1'])
