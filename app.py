@@ -217,8 +217,7 @@ def main():
 
                 # transform
                 status_userdata.info("Calculating coordinates for user target chemicals mapped into selected reference space")
-                target_coordinates = transform_target(model, new_fingerprints) 
-                target_coordinates = target_coordinates - offset.values
+                target_coordinates = transform_target(model, new_fingerprints, offset) 
 
                 progress_bar.progress(95)
                 status_userdata.info("Calculation complete...saving coordinates.")

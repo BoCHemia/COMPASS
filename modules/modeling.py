@@ -214,12 +214,13 @@ def load_model(file_name, from_zip=False, use_joblib=False):
 # Modeling (for the target space)
 # -----------------------------
 
-def transform_target(model, fingerprints, **kwargs):
+def transform_target(model, fingerprints, offset, **kwargs):
     """
     Transform fingerprints using the provided tSNE model
 
     :param model: trained tSNE model
     :param fingerprints: fingerprint matrix, including a column "INCHIKEY"
+    :param offset: model-specific offset values to correct the transformed coordinates
     :return: coordinates of the input compounds in the tSNE space
     """
     # Prepare boolean fingerprint array
@@ -231,7 +232,7 @@ def transform_target(model, fingerprints, **kwargs):
     print("Transforming worked")
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     coordinates_df.index = fingerprints['INCHIKEY']
-
+    coordinates_df = coordinates_df - offset.values
     return coordinates_df
 
 def lookup_target(fingerprints, reference_data):
