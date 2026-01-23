@@ -3,6 +3,7 @@ from modules.modeling import *
 from modules.visualizing import *
 from tqdm import tqdm
 import getpass
+import time
 
 # Settings
 
@@ -48,13 +49,11 @@ def load_enviPath_data(from_csv = False, use_legacy=False):
         print(f'Fetch compounds from {pkg} package')
         cpds = pkg.get_compounds()
         for cpd in tqdm(cpds): # Iterate through compounds in package
-            try: name = cpd.get_name()
-            except:
-                print('Warning: Name not found for', cpd.id)
+            name = cpd.get_name()
+            if not name:
                 continue
-            else:
-                if "Spike compound" in name: # Skip C14 labelled spike compounds
-                    continue
+            if "Spike compound" in name: # Skip C14 labelled spike compounds
+                continue
             D[cpd.id] = {'PREFERRED_NAME': name,
                          'SMILES': cpd.get_smiles(),
                          'INCHIKEY': cpd.get_inchikey(),
@@ -65,10 +64,9 @@ def load_enviPath_data(from_csv = False, use_legacy=False):
         df.to_csv(file_path, index = False)
     return df
 
-
 ############ Main #################
 # load enviPath data
-new_df = load_enviPath_data(from_csv=False)
+new_df = load_enviPath_data(from_csv=True)
 
 # preprocess
 new_fingerprints = preprocess_data(new_df)
@@ -113,5 +111,5 @@ figure = plot_chemical_space(annotated_coordinates, nametag='enviPath', map_on=f
                         )
 
 # Save figure
-output_filename = f'{file_name}_on_{reference_data_name}'
+output_filename = f'{file_name}_on_{reference_data_name}_lookup'
 save_figure(figure, output_filename)
