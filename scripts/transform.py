@@ -25,8 +25,7 @@ for folder_name, file_name in datasets:
     new_fingerprints = load_fingerprints(file_name=file_name, folder_name=folder_name)
 
     # transform
-    coordinates = transform_target(model, new_fingerprints)
-    coordinates = coordinates - offset.values # add to app.py
+    coordinates = transform_target(model, new_fingerprints, offset)
 
     save_coordinates(coordinates=coordinates,
                     folder_name=folder_name,

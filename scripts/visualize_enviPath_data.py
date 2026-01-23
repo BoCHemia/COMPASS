@@ -2,7 +2,8 @@
 from modules.modeling import *
 from modules.visualizing import *
 from tqdm import tqdm
-from getpass import getpass
+import getpass
+import time
 
 # Settings
 
@@ -23,10 +24,14 @@ def load_enviPath_data(from_csv = False, use_legacy=False):
     # Requires the additional installation fo enviPath_python
     from enviPath_python import enviPath
     if use_legacy:
+        print("Fetching data from legacy.envipath.org...")
         eP = enviPath('https://legacy.envipath.org/', new_api=False)
         tag = 'legacy.'
     else:
-        eP = enviPath('https://envipath.org', new_api=True)
+        print("Fetching data from envipath.org...")
+        eP = enviPath("https://envipath.org/api/legacy/", new_api=True)
+        username = input("Username: ")
+        eP.login(username, getpass.getpass())
         tag= ''
 
     # fetch packages
@@ -36,6 +41,7 @@ def load_enviPath_data(from_csv = False, use_legacy=False):
     sediment = eP.get_package(f'https://{tag}envipath.org/package/f05e38d8-e9b4-4c3e-b0d8-9ab29966eccf')
     pfas = eP.get_package(f'https://{tag}envipath.org/package/d2cfb5af-4ea0-4375-9a48-f2e776e44636')
     package_list = [bbd, soil, sludge, sediment, pfas]
+    # package_list = [pfas]
 
     # download all data
     D = {}
@@ -44,6 +50,8 @@ def load_enviPath_data(from_csv = False, use_legacy=False):
         cpds = pkg.get_compounds()
         for cpd in tqdm(cpds): # Iterate through compounds in package
             name = cpd.get_name()
+            if not name:
+                continue
             if "Spike compound" in name: # Skip C14 labelled spike compounds
                 continue
             D[cpd.id] = {'PREFERRED_NAME': name,
@@ -56,10 +64,9 @@ def load_enviPath_data(from_csv = False, use_legacy=False):
         df.to_csv(file_path, index = False)
     return df
 
-
 ############ Main #################
 # load enviPath data
-new_df = load_enviPath_data(from_csv=False)
+new_df = load_enviPath_data(from_csv=True)
 
 # preprocess
 new_fingerprints = preprocess_data(new_df)
@@ -67,7 +74,7 @@ save_fingerprints(fingerprints=new_fingerprints, file_name=file_name, folder_nam
 
 # transform on ZeroPM
 reference_folder = 'ZeroPM'
-reference_data_name =  'zeropm'
+reference_data_name =  'zeropm_partial'
 
 # # Alternatively: transform on NIST
 # reference_folder = "PFAS"
@@ -77,10 +84,13 @@ reference_data_name =  'zeropm'
 reference_coordinates = load_coordinates(reference_folder, reference_data_name)
 
 # Load reference model and transform enviPath compounds
-model = load_model(reference_data_name, from_zip=False)
+model = load_model(reference_data_name, use_joblib=True)
+offset = load_model_offset(reference_data_name)
 
 # Get tSNE coordinates for input molecules
-coordinates = lookup_or_transform_target(model, new_fingerprints, reference_coordinates)
+coordinates = lookup_or_transform_target(model, new_fingerprints, offset, reference_coordinates)
+# coordinates = lookup_target(new_fingerprints, reference_coordinates)
+# coordinates = transform_target(model, new_fingerprints, offset)
 save_coordinates(coordinates=coordinates,
                  folder_name=folder_name,
                  file_name=file_name,
@@ -101,5 +111,5 @@ figure = plot_chemical_space(annotated_coordinates, nametag='enviPath', map_on=f
                         )
 
 # Save figure
-output_filename = f'{file_name}_on_{reference_data_name}'
+output_filename = f'{file_name}_on_{reference_data_name}_lookup'
 save_figure(figure, output_filename)

@@ -214,12 +214,13 @@ def load_model(file_name, from_zip=False, use_joblib=False):
 # Modeling (for the target space)
 # -----------------------------
 
-def transform_target(model, fingerprints, **kwargs):
+def transform_target(model, fingerprints, offset, **kwargs):
     """
     Transform fingerprints using the provided tSNE model
 
     :param model: trained tSNE model
     :param fingerprints: fingerprint matrix, including a column "INCHIKEY"
+    :param offset: model-specific offset values to correct the transformed coordinates
     :return: coordinates of the input compounds in the tSNE space
     """
     # Prepare boolean fingerprint array
@@ -231,7 +232,7 @@ def transform_target(model, fingerprints, **kwargs):
     print("Transforming worked")
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     coordinates_df.index = fingerprints['INCHIKEY']
-
+    coordinates_df = coordinates_df - offset.values
     return coordinates_df
 
 def lookup_target(fingerprints, reference_data):
@@ -263,7 +264,7 @@ def lookup_target(fingerprints, reference_data):
     print(f'{found_compounds} compounds (out of {fingerprints.shape[0]}) could be found in the reference space')
     return lookup_coordinates_df
 
-def lookup_or_transform_target(model, fingerprints, reference_data):
+def lookup_or_transform_target(model, fingerprints, offset, reference_data):
     """
     Looks up TSNE coordinates in the reference data. For compounds that could not be found in the reference,
     TSNE coordinates are calculated via the provided tSNE model.
@@ -284,7 +285,7 @@ def lookup_or_transform_target(model, fingerprints, reference_data):
     transform_fingerprints = remaining_compounds_df.merge(fingerprints, how='left', on='INCHIKEY')
 
     # transform fingerprints
-    transform_coordinates_df =  transform_target(model, transform_fingerprints)
+    transform_coordinates_df =  transform_target(model, transform_fingerprints, offset)
 
     # add coordinates from lookup
     lookup_coordinates = lookup_coordinates_df.dropna(subset=['TSNE1'])
