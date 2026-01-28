@@ -12,15 +12,20 @@ services:
   server:
     build:
       context: .
-    ports:
-      - 8501:8501
     volumes:
       - ./models:/app/models:ro
       - ./data:/app/data
       - ./output:/app/output
       - ./app.py:/app/app.py:ro
       - ./modules:/app/modules:ro
-
+      
+    ports:
+      - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.95'
+          memory: 1G
 
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
@@ -54,4 +59,3 @@ services:
 # secrets:
 #   db-password:
 #     file: db/password.txt
-
