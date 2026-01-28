@@ -33,4 +33,6 @@ uploads/*
 # Temporarily ignore DB folder contents
 data/ZeroPM/*
 data/COCONUT/*
-data/input/pfas_envipath.csv
+data/DrugBank/*
+data/AgroTrak/*
+data/PFAS/*
