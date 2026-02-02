@@ -75,9 +75,8 @@ def get_color_map(palette, df, column_for_color_map):
     return color_map
 
 
-
-
-def plot_chemical_space(df, nametag = '', map_on=None,
+def plot_chemical_space(df, xy = ('TSNE1', 'TSNE2'),
+                         nametag = '', map_on=None,
                    hover_name = 'SMILES', hover_data = ['INCHIKEY'], # minimal input requirements
                    color='lightgrey',
                    column_for_color_map = None,
@@ -111,7 +110,7 @@ def plot_chemical_space(df, nametag = '', map_on=None,
         if color_type== 'discrete': # discrete coloring
             print("Use {} column to color map".format(column_for_color_map))
             color_discrete_map = get_color_map(palette, df, column_for_color_map)
-            input_fig = px.scatter(df, x="TSNE1", y="TSNE2",
+            input_fig = px.scatter(df, x=xy[0], y=xy[1],
                                    hover_name = hover_name, hover_data=hover_data,
                                    render_mode="webgl", height=height, width=width,
                                    color=column_for_color_map, color_discrete_map=color_discrete_map)
@@ -129,7 +128,7 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
             assert type(palette) == str, "The provided continuous palette must be plotly palette name"
             color_continuous_scale = palette
-            input_fig = px.scatter(df, x="TSNE1", y="TSNE2",
+            input_fig = px.scatter(df, x=xy[0], y=xy[1],
                                    hover_name=hover_name, hover_data=hover_data,
                                    render_mode="webgl", height=height, width=width,
                                    color=column_for_color_map, color_continuous_scale=color_continuous_scale)
@@ -140,19 +139,19 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
     else: #single color
         print('Use single color')
-        input_fig = px.scatter(df, x="TSNE1", y="TSNE2", hover_name=hover_name, hover_data=hover_data,
-                        render_mode="webgl", height=height, width=width)
-        input_fig.update_traces(marker=dict(color=color, size=size, opacity=opacity, line=dict(width=0)),
-            name=nametag)
+        input_fig = px.scatter(df, x=xy[0], y=xy[1], 
+                               hover_name=hover_name, hover_data=hover_data,
+                                render_mode="webgl", height=height, width=width)
+        input_fig.update_traces(marker=dict(color=color, size=size, opacity=opacity, line=dict(width=0)), 
+                                name=nametag, showlegend=False)
         
-        input_fig.update_traces(showlegend=False)
         input_fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', 
                                        marker=dict(color=color, size=12, opacity=1),
                                        legendgroup=nametag, showlegend=True, name=nametag))
     
     # build custom hovertemplate
     hovertemplate = ("<b>%{hovertext}</b><br>"
-                     "TSNE=(%{x}, %{y})<br>")
+                     f"{xy[0]}=%{{x}}, {xy[1]}=%{{y}}<br>")
     for i, col in enumerate(hover_data):
         hovertemplate += f"{col}: %{{customdata[{i}]}}<br>"
     hovertemplate += "<extra></extra>"
@@ -161,7 +160,8 @@ def plot_chemical_space(df, nametag = '', map_on=None,
     # merge data
     if map_on is not None:
         fig = map_on
-        merged_fig = go.Figure(data=fig.data + input_fig.data, layout=input_fig.layout)
+        merged_fig = go.Figure(data=fig.data + input_fig.data, layout=fig.layout)
+
     else:
         merged_fig = input_fig
 
@@ -173,9 +173,9 @@ def plot_chemical_space(df, nametag = '', map_on=None,
         # paper_bgcolor='white',
         # plot_bgcolor='white',
         font_color='black',
-        xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False,
+        xaxis=dict(title=xy[0],visible=False, showgrid=False, zeroline=False,
                     fixedrange=False),
-        yaxis=dict(title="TSNE2",visible=False, showgrid=False, zeroline=False,
+        yaxis=dict(title=xy[1],visible=False, showgrid=False, zeroline=False,
                     fixedrange=False),
         # align legend look 
         legend_tracegroupgap=0, 
