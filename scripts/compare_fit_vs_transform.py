@@ -67,7 +67,7 @@ palette = ['darkslategrey', 'teal', 'aquamarine', 'darkred', 'orangered', 'mediu
 palette_hex = [mcolors.to_hex(c) for c in palette]
 color_map = dict(zip(hue_order, palette_hex)) 
 
-fig = chemical_space_plot(df_tsne_fit, 'Superclass (top 15)', color_map)
+fig = plot_chemical_space(df_tsne_fit, 'Superclass (top 15)', color_map)
 fig.update_layout(
     paper_bgcolor='white',
     plot_bgcolor='white',
@@ -90,7 +90,7 @@ palette = ['darkslategrey', 'teal', 'aquamarine', 'darkred', 'orangered', 'mediu
 palette_hex = [mcolors.to_hex(c) for c in palette]
 color_map = dict(zip(hue_order, palette_hex)) 
 
-fig = chemical_space_plot(df_tsne_transform, 'Superclass (top 15)', color_map)
+fig = plot_chemical_space(df_tsne_transform, 'Superclass (top 15)', color_map)
 fig.update_layout(
     paper_bgcolor='white',
     plot_bgcolor='white',
