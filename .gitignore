@@ -10,6 +10,9 @@ models/*
 __pycache__
 .DS_Store
 
+# Local-only files for development
+jose_local_only/
+
 # Ignore all zip
 *.zip
 
