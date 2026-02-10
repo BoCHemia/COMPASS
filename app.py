@@ -39,7 +39,7 @@ def main():
                                     'PFAS': ['nist_partial'],
                                     'PlastChem': ['db_v1.01_partial'],
                                     'ZeroPM': ['partial'],
-                                    'Coconut': None,
+                                    'Coconut': ['partial'],
                                     'AgroTrak': ['zhang_2025_partial']}
     
     reference_space = st.sidebar.selectbox('Select reference chemical space"', label_visibility="collapsed",
