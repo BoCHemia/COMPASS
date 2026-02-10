@@ -1,3 +1,6 @@
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # Convention: (reference_space, target_space)
 ALLOWED_MAPPINGS: set[tuple[str, str]] = {
     # ("ZeroPM", "ZeroPM"),
@@ -9,7 +12,7 @@ ALLOWED_MAPPINGS: set[tuple[str, str]] = {
 
     # Coconut
 #     ("Coconut", "Coconut"),
-    ("Coconut", "DrugBank"),
+    ("Coconut", "DrugBank"), 
     ("Coconut", "AgroTrak"),
 
     # PlastChem

@@ -146,16 +146,35 @@ def main():
             missing.append("reference space")
         if (available_ref_spaces_dict.get(reference_space)) and (reference_space_version is None):
             missing.append("reference version")
-        # if target_space is None:
-        #     missing.append("target space")
+
+        if target_space is None:
+            missing.append("target space")
+
         if (available_ref_spaces_dict.get(target_space)) and (target_space_version is None):
             missing.append("target version")
+
         if target_space == "my_own_substances" and user_target_chemicals is None:
             missing.append("CSV file with target chemicals")
 
+        # Check that something is missing. 
         if missing:
             st.warning("Please provide: " + ", ".join(missing))
             st.stop()
+
+        # Check that the pair selected is allowed based on the config/allowed_mappings.py file
+        from config.allowed_mappings import is_mapping_allowed, ALLOWED_MAPPINGS
+        if target_space != "my_own_substances":
+            if not is_mapping_allowed(reference_space, target_space):
+                # Helpful message: show allowed targets for the chosen reference
+                allowed_targets = sorted({t for (r, t) in ALLOWED_MAPPINGS if r == reference_space})
+                st.error(
+                    f"Due to the nature of the selected spaces, mapping **{target_space} into {reference_space}** is not supported.\n\n"
+                    # todo: Please refer to our [Learn more]{st.page_link(pages/learn_more.py)} section for details.  
+
+                    f"Supported targets for **{reference_space}**: "
+                    f"{', '.join(allowed_targets) if allowed_targets else '—'}"
+                )
+                st.stop()
 
         st.sidebar.info("You have selected to map {} into {}".format(target_space, reference_space)) 
     
