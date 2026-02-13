@@ -1,8 +1,11 @@
 # Visualizing enviPath packages directly from the enviPath website
+from seaborn import color_palette
+
 from modules.modeling import *
 from modules.visualizing import *
 from tqdm import tqdm
 import getpass
+import molplotly
 import time
 
 # Settings
@@ -69,8 +72,8 @@ def load_enviPath_data(from_csv = False, use_legacy=False):
 new_df = load_enviPath_data(from_csv=True)
 
 # preprocess
-new_fingerprints = preprocess_data(new_df)
-save_fingerprints(fingerprints=new_fingerprints, file_name=file_name, folder_name=folder_name)
+# new_fingerprints = preprocess_data(new_df)
+# save_fingerprints(fingerprints=new_fingerprints, file_name=file_name, folder_name=folder_name)
 
 # transform on ZeroPM
 reference_folder = 'ZeroPM'
@@ -84,17 +87,17 @@ reference_data_name =  'zeropm_partial'
 reference_coordinates = load_coordinates(reference_folder, reference_data_name)
 
 # Load reference model and transform enviPath compounds
-model = load_model(reference_data_name, use_joblib=True)
-offset = load_model_offset(reference_data_name)
+# model = load_model(reference_data_name, use_joblib=True)
+# offset = load_model_offset(reference_data_name)
 
 # Get tSNE coordinates for input molecules
-coordinates = lookup_or_transform_target(model, new_fingerprints, offset, reference_coordinates)
-# coordinates = lookup_target(new_fingerprints, reference_coordinates)
-# coordinates = transform_target(model, new_fingerprints, offset)
-save_coordinates(coordinates=coordinates,
-                 folder_name=folder_name,
-                 file_name=file_name,
-                 reference_name=reference_data_name)
+# coordinates = lookup_or_transform_target(model, new_fingerprints, offset, reference_coordinates)
+# # coordinates = lookup_target(new_fingerprints, reference_coordinates)
+# # coordinates = transform_target(model, new_fingerprints, offset)
+# save_coordinates(coordinates=coordinates,
+#                  folder_name=folder_name,
+#                  file_name=file_name,
+#                  reference_name=reference_data_name)
 annotated_coordinates = load_coordinates(folder_name, file_name, reference_data=reference_data_name) #enviPath coordinates
 
 # visualize on reference space

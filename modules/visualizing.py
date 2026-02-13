@@ -104,6 +104,8 @@ def plot_chemical_space(df, nametag = '', map_on=None,
     :return: figure object
     """
     print(f"Mapping {nametag} data...")
+    hover_data.append("Data origin")
+    df['Data origin'] = [nametag]*len(df) # add data origin to each point in dataframe
 
     if column_for_color_map is not None: # coloring by column
         assert column_for_color_map in df.columns, (f"Column {column_for_color_map} does not exist in dataframe. "
