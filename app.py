@@ -24,6 +24,7 @@ def main():
     # ----------- APP MODE (currently 'demo' or 'full') ----------- 
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()   # "demo" or "full"
     IS_DEMO = MODE == "demo"
+    ASSET_ROOT = "zenodo" if MODE == "demo" else "data"    
 
 
 
@@ -41,7 +42,7 @@ def main():
                         you can locate and explore chemical data sets in relation to known chemical landscapes.
                         You can provide your own data set or select from pre-defined target spaces.
                 """)
-    develop = st.sidebar.checkbox("dev")
+    
     darkmode = st.sidebar.checkbox("dark mode")
 
     # Step 1: Select reference space
@@ -177,7 +178,7 @@ def main():
         st.sidebar.info("You have selected to map {} into {}".format(target_space, reference_space)) 
         
         # todo: not sure if this should be here
-        st.cache_resource.clear()  # Clear cached model to prevent memory issues;
+        # st.cache_resource.clear()  # Clear cached model to prevent memory issues;
         # one problem is that it would clear the cached csv too so consider more targeted cache clearing in the future
 
     
@@ -276,17 +277,22 @@ def main():
     status = st.empty()
 
 
-    ###### Check that target coordiantes exist ##### #todo 
-    ###### This should work with user coordinates as well, but needs to be tested
-    target_coordinates_file = os.path.join(target_folder_name, f"{target_file_name}_coordinates.csv")
-    if not os.path.exists(target_coordinates_file):
-        st.warning(f"Target coordinates file does not exist: {target_coordinates_file}")
-        st.stop()  # Stop execution if target coordinates don't exist
+
 
 
     with st.spinner("Projecting your substances of interest", show_time=True):
+        # ###### Check that target coordiantes exist ##### #todo 
+        # ###### This should work with user coordinates as well, but needs to be tested
+        # target_coordinates_file = os.path.join(target_folder_name, f"{target_file_name}_coordinates.csv")
+        # if not os.path.exists(target_coordinates_file):
+        #     st.warning(f"Target coordinates file does not exist: {target_coordinates_file}")
+        #     st.stop()  # Stop execution if target coordinates don't exist
+
+
         time.sleep(3)
         project_progress_bar.progress(10)
+
+        
         
         ###### Load selected datasets #####
         @st.cache_data
