@@ -1,4 +1,5 @@
 # import resource
+from PIL.ImImagePlugin import MODE
 import streamlit as st
 import pandas as pd
 import time
@@ -17,6 +18,16 @@ def main():
                             "By selecting a reference space (e.g., marketed chemicals, pharmaceuticals, PFAS), "
                             "you can locate and explore chemical data sets in relation to known chemical landscapes. "
                             "You can provide your own data set or select from pre-defined target spaces."})
+
+
+
+    # ----------- APP MODE (currently 'demo' or 'full') ----------- 
+    MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()   # "demo" or "full"
+    IS_DEMO = MODE == "demo"
+
+
+
+
 
     # ----------- CONFIGURATION SIDEBAR ----------- 
     # Streamlit app title
@@ -98,6 +109,10 @@ def main():
 
     # - Enable .csv upload when the user selects 'my_own_substances'
     if target_space == 'my_own_substances':
+        if IS_DEMO:
+            st.sidebar.warning("Uploading your own dataset is only available in the local (full) version.")
+            st.stop()
+
         user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
 
         @st.cache_data
@@ -115,6 +130,7 @@ def main():
         )
         
         if user_target_chemicals:
+            # I could create a userid for each session and save the file with the userid to prevent overwriting when multiple users are using the app at the same time, but for now I will just use a placeholder name and overwrite it each time; this means that if multiple users are using the app at the same time, they will overwrite each other's data, but this is a limitation we can live with for now; if we want to allow multiple users to use the app at the same time in the future, we can implement a user management system and save the files with unique user ids
             target_file_name = 'user_target_chemicals' # placeholder to allow user specified naming later
             target_folder_name = '_USER'
 
@@ -127,6 +143,7 @@ def main():
         else:
             st.info("Please upload a CSV file to proceed.")
             st.stop()
+
 
     # Step 3: Activate mapping --  Can we make the form/button more beautiful?
     with st.sidebar.form("config_form", clear_on_submit=False, border=False): 
@@ -158,83 +175,114 @@ def main():
             st.stop()
 
         st.sidebar.info("You have selected to map {} into {}".format(target_space, reference_space)) 
+        
+        # todo: not sure if this should be here
+        st.cache_resource.clear()  # Clear cached model to prevent memory issues;
+        # one problem is that it would clear the cached csv too so consider more targeted cache clearing in the future
+
     
     
+    
+    # ----------- END OF CONFIGURATION, START OF APP -----------
+
     # ----------- DATA LOADING AND TRANSFORMATION SECTION ----------- 
     # - Transform user data and calculate coordinates (if needed)
-    if not develop:
-        if target_space == 'my_own_substances':
-            with st.spinner("Calculating the chemical space mapping; this may take several minutes", show_time=True):
-                time.sleep(1)
-                
-                progress_bar = st.progress(0)
-                status_userdata = st.empty()
 
-                from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints
+    # ----------- Full app feature ------------ #todo
+    # import Capabilities 
+    # APP_MODE = os.getenv("COMPASS_MODE", "demo") # 'demo' or 'full_app'
+    # caps = Capabilities.from_mode(APP_MODE)
+    # This capabilities thing can be used for an intermediate solution
+    # For example "lightweight" app hosted by EAWAG with some of the smaller reference spaces. PFAS? 
 
-                progress_bar.progress(5)
-                
-                # - preprocessing
-                status_userdata.info("Preprocessing user data")
-                df_user = standardize_structures(df_user)
 
-                progress_bar.progress(15)
-                
-                required = {"Superclass", "Class", "Subclass"}
-                if not required.issubset(df_user.columns):
-                    status_userdata.info("No ClassyFire information provided; complementing with available ClassyFire data.")
-                    classyfire = pd.read_csv(os.path.join('data', 'ClassyFire', 'input_classyfire.csv'))
-                    df_user = pd.merge(df_user, classyfire, on='INCHIKEY', how='left')
+    if (not IS_DEMO) and (target_space == 'my_own_substances'):
+        with st.spinner("Calculating the chemical space mapping; this may take several minutes", show_time=True):
+            time.sleep(1)
+            
+            progress_bar = st.progress(0)
+            status_userdata = st.empty()
 
-                    missing_cf = df_user['Superclass'].isna().sum()
-                    if missing_cf>0:
-                        st.warning(f"ClassyFire information merged; {missing_cf} out of {len(df_user)} substances remain without taxonomy information.  \nConsider adding ClassyFire information to your input file.")
-                    else:
-                        status_userdata.status("ClassyFire information merged; all substances have taxonomy information.")
+            from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints
 
-                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name )
-                
-                progress_bar.progress(20)
-                status_userdata.info("User data was preprocessed and saved in user folder")
+            progress_bar.progress(5)
+            
+            # - preprocessing
+            status_userdata.info("Preprocessing user data")
+            df_user = standardize_structures(df_user)
 
-                # - fingerprints
-                status_userdata.info("Calculating fingerprints")
-                new_fingerprints = calculate_fingerprints(df_user)
-                save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
-                
-                progress_bar.progress(30)
-                status_userdata.info("Fingerprints have been calculated and saved")
-                
-                # load tSNE model object
-                status_userdata.info("Loading trained reference model; this takes 1-3 mins")
+            progress_bar.progress(15)
+            
+            required = {"Superclass", "Class", "Subclass"}
+            if not required.issubset(df_user.columns):
+                status_userdata.info("No ClassyFire information provided; complementing with available ClassyFire data.")
+                classyfire = pd.read_csv(os.path.join('data', 'ClassyFire', 'input_classyfire.csv'))
+                df_user = pd.merge(df_user, classyfire, on='INCHIKEY', how='left')
 
-                from modules.modeling import (load_model, load_model_offset, transform_target, save_coordinates)
-                model = load_model(reference_file_name, use_joblib=True)
-                offset = load_model_offset(reference_file_name) 
-                
-                status_userdata.info("Loading model complete")
-                progress_bar.progress(75)
+                missing_cf = df_user['Superclass'].isna().sum()
+                if missing_cf>0:
+                    st.warning(f"ClassyFire information merged; {missing_cf} out of {len(df_user)} substances remain without taxonomy information.  \nConsider adding ClassyFire information to your input file.")
+                else:
+                    status_userdata.status("ClassyFire information merged; all substances have taxonomy information.")
 
-                # transform
-                status_userdata.info("Calculating coordinates for user target chemicals mapped into selected reference space")
-                target_coordinates = transform_target(model, new_fingerprints, offset) 
+            save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name )
+            
+            progress_bar.progress(20)
+            status_userdata.info("User data was preprocessed and saved in user folder")
 
-                progress_bar.progress(95)
-                status_userdata.info("Calculation complete...saving coordinates.")
-                save_coordinates(coordinates=target_coordinates,
-                                    folder_name=target_folder_name,
-                                    file_name=target_file_name,
-                                    reference_name=reference_file_name)       
-                progress_bar.progress(100)
+            # - fingerprints
+            status_userdata.info("Calculating fingerprints")
+            new_fingerprints = calculate_fingerprints(df_user)
+            save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
+            
+            progress_bar.progress(30)
+            status_userdata.info("Fingerprints have been calculated and saved")
+            
+            # load tSNE model object
+            status_userdata.info("Loading trained reference model; this takes 1-3 mins")
 
-                # - empty progress bars and status after a short delay
-                time.sleep(1)
-                progress_bar.empty()
-                status_userdata.empty()     
+            from modules.modeling import (load_model, load_model_offset, transform_target, save_coordinates)
+            st.cache_resource(scope="session", show_spinner=True)(load_model)  # Cache the model loading to prevent reloading on every rerun; scope=session ensures it's loaded once per user session
+            model = load_model(reference_file_name, use_joblib=True)
 
+            st.cache_resource(scope="session", show_spinner=False)(load_model_offset) 
+            offset = load_model_offset(reference_file_name) 
+            
+            status_userdata.info("Loading model complete")
+            progress_bar.progress(75)
+
+            # transform
+            status_userdata.info("Calculating coordinates for user target chemicals mapped into selected reference space")
+            target_coordinates = transform_target(model, new_fingerprints, offset) 
+
+            progress_bar.progress(95)
+            status_userdata.info("Calculation complete...saving coordinates.")
+            save_coordinates(coordinates=target_coordinates,
+                                folder_name=target_folder_name,
+                                file_name=target_file_name,
+                                reference_name=reference_file_name)       
+            progress_bar.progress(100)
+
+            # - empty progress bars and status after a short delay
+            time.sleep(1)
+            progress_bar.empty()
+            status_userdata.empty()     
+
+
+
+    # ----------- Shared feature full app and demo -------------------------------------
     # - load reference and target coordinates
     project_progress_bar = st.progress(0)
     status = st.empty()
+
+
+    ###### Check that target coordiantes exist ##### #todo 
+    ###### This should work with user coordinates as well, but needs to be tested
+    target_coordinates_file = os.path.join(target_folder_name, f"{target_file_name}_coordinates.csv")
+    if not os.path.exists(target_coordinates_file):
+        st.warning(f"Target coordinates file does not exist: {target_coordinates_file}")
+        st.stop()  # Stop execution if target coordinates don't exist
+
 
     with st.spinner("Projecting your substances of interest", show_time=True):
         time.sleep(3)
@@ -264,6 +312,8 @@ def main():
         time.sleep(1)
         project_progress_bar.empty()
         status.empty()
+
+   # ----------- END DATA LOADING AND TRANSFORMATION SECTION ----------- 
 
 
     ### ----------- VISUALIZATION SECTION -----------  ###
@@ -371,3 +421,5 @@ def main():
 if __name__ == '__main__':
     main()
     print('app is running')
+    #todo: clear the user folder after the app is closed? or after a certain time period? to prevent storage issues when hosting in EAWAG
+    # todo: The user also should know that if they install the app locally, the data will be stored on their computer in the /data/_USER folder, and they can delete it whenever they want
