@@ -7,13 +7,13 @@ ALLOWED_MAPPINGS: set[tuple[str, str]] = {
     ("ZeroPM", "DrugBank"),
     ("ZeroPM", "PFAS"),
     ("ZeroPM", "PlastChem"),
-    ("ZeroPM", "Coconut"),
+    ("ZeroPM", "COCONUT"),
     ("ZeroPM", "AgroTrak"),
 
     # Coconut
 #     ("Coconut", "Coconut"),
-    ("Coconut", "DrugBank"), 
-    ("Coconut", "AgroTrak"),
+    ("COCONUT", "DrugBank"), 
+    ("COCONUT", "AgroTrak"),
 
     # PlastChem
 #     ("PlastChem", "PlastChem"),
