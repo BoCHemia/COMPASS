@@ -22,9 +22,10 @@ def main():
 
 
     # ----------- APP MODE (currently 'demo' or 'full') ----------- 
-    MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()   # "demo" or "full"
+    MODE = os.getenv("COMPASS_MODE", "demo").strip().lower() 
+    print(MODE)  # "demo" or "full"
     IS_DEMO = MODE == "demo"
-    ASSET_ROOT = "zenodo" if MODE == "demo" else "data"    
+    ASSET_ROOT = "demo_assets" if MODE == "demo" else "data"    
 
 
 
@@ -298,7 +299,7 @@ def main():
         @st.cache_data
         def load_coordinates_to_cache(folder_name, file_name, reference_data=""):
             # IMPORTANT: Cache the conversion to prevent computation on every rerun
-            return load_coordinates(folder_name, file_name, reference_data)
+            return load_coordinates(folder_name, file_name, reference_data, base_dir=ASSET_ROOT)
 
         # load reference coordinates
         reference_coordinates = load_coordinates_to_cache(reference_folder_name, reference_file_name)

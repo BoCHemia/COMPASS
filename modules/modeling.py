@@ -166,12 +166,13 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     if reference_name:
         file_name += "_on_" + reference_name
     # save df, annotated with TSNE coordinates
-    output_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
-    df_coordinates.to_csv(output_path, index=False)
-    print(f"Saved coordinates to {output_path}")
+    # Refacting note: output_path -> coordinates_path
+    coordinates_path = os.path.join(PROJECT_ROOT, 'data', folder_name, "output_" + file_name + '.csv')
+    df_coordinates.to_csv(coordinates_path, index=False)
+    print(f"Saved coordinates to {coordinates_path}")
 
     
-def load_coordinates(folder_name, file_name, reference_data=""):
+def load_coordinates(folder_name, file_name, reference_data="", base_dir="data"):
     """
     Load tSNE coordinates from file
 
@@ -182,7 +183,7 @@ def load_coordinates(folder_name, file_name, reference_data=""):
     """
     if reference_data:
         file_name += f'_on_{reference_data}'
-    coordinates_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
+    coordinates_path = os.path.join(PROJECT_ROOT, base_dir, folder_name, "output_" + file_name + '.csv')
     coordinates = pd.read_csv(coordinates_path)
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
