@@ -31,6 +31,6 @@ services:
     environment:
       - COMPASS_MODE=demo
     volumes:
-      - ./demo_assets:/app/demo_assets:ro
+      # - ./demo_assets:/app/demo_assets:ro
       - ./app.py:/app/app.py:ro
       - ./modules:/app/modules:ro

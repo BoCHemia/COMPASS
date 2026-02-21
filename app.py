@@ -7,6 +7,7 @@ import plotly.express as px
 
 from modules.modeling import load_coordinates
 from modules.visualizing import plot_chemical_space, plot_treemap
+from modules.preprocessing import get_demo_assets_root
 
 def main():
     st.set_page_config(page_title="COMPASS", page_icon="🧭",
@@ -27,8 +28,16 @@ def main():
     # ----------- APP MODE (currently 'demo' or 'full') ----------- 
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower() 
     print(MODE)  # "demo" or "full"
+    
     IS_DEMO = MODE == "demo"
-    ASSET_ROOT = "demo_assets" if MODE == "demo" else "data"    
+    
+    if IS_DEMO:
+        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/18719735/files/demo_assets.zip")
+        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "6fede55bf124fe97652faef249739aca")
+
+        ASSET_ROOT = get_demo_assets_root(DEMO_ZIP_URL, expected_md5=DEMO_ZIP_MD5)
+    else:
+        ASSET_ROOT = "data"    
 
 
 
