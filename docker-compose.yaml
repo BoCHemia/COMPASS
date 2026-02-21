@@ -22,6 +22,7 @@ services:
       - ./output:/app/output
       - ./app.py:/app/app.py:ro
       - ./modules:/app/modules:ro
+      - ./config:/app/config:ro
 
   demo:
     build:
