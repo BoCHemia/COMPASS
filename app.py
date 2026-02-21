@@ -25,7 +25,8 @@ def main():
        'TSNE1', 'TSNE2', 'Kingdom', 'Superclass',
        'Class', 'Subclass']
 
-    # ----------- APP MODE (currently 'demo' or 'full') ----------- 
+    # ----------- APP MODE LOGIC (currently 'demo' or 'full') ----------- 
+    # ---------------- The test_demo mode is only for testing the demo assets locally without downloading from Zenodo each time, and should not be exposed to users in the app; this is just for development purposes ----------------
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower() 
     print(MODE)  # "demo" or "full"
     
@@ -128,7 +129,10 @@ def main():
     # - Enable .csv upload when the user selects 'my_own_substances'
     if target_space == 'my_own_substances':
         if IS_DEMO:
-            st.sidebar.warning("Uploading your own dataset is only available in the local (full) version.")
+            st.sidebar.warning("Uploading your own dataset is only available using the full version." \
+            "The full versions is distributed using Docker and can be run locally on your machine;" \
+            "please follow this [link](https://github.com/BoCHemia/global-chemical-space/tree/develop) and refer to the README for instructions. ")
+            
             st.stop()
 
         user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
