@@ -70,11 +70,11 @@ Go to Settings>Resources:
 
 We recommend that the Memory Limit is above 10 GB to prevent the app from quitting unexpectedely. For CPU we recommend 2-4. 
 
-The section of this app which consumes most resources is to project your dataset into a reference space with a pre-trained model. The larger the reference space is the larger the memory requirement is. With the current implementation the most resource demanding operation is to use COCONUT as the reference space. 
+The section of this app which consumes most resources is to project your dataset into a reference space with a pre-trained model. The larger the reference space, the larger the memory requirement is. With the current implementation the most resource demanding operation is to use COCONUT as the reference space. 
 
 If you don't have such resources you can still use smaller references spaces such as PFAS or DrugBank. 
 
-See *Resource Considerations* to know what to do in case the app crashes. 
+Note: See [*Resource Considerations*](https://github.com/BoCHemia/global-chemical-space/tree/develop?tab=readme-ov-file#%EF%B8%8F-resource-considerations)  section at the end of this document to know what to do in case the app crashes due to memory issues. 
 
 Save changes in Settings and keep Docker running
 
@@ -128,28 +128,15 @@ The application will be available at:
 
 http://localhost:8501
 
-When the application starts it will fetch the relevant data from Zenodo. Please wait until this is completed to start using it. 
+When the application starts, it will fetch the relevant data from Zenodo. Please wait until this is completed to start using it. 
 
 It should look like this:
 
 ![alt text](tutorials/welcome_page.png)
 
 
-
 ------------------------------------------------------------------------
 
-# 🏗 Architecture Overview
-
-COMPASS is structured into two execution modes:
-
-  Mode   Intended Use                  Upload Support   Model Execution
-  ------ ----------------------------- ---------------- -----------------
-  Demo   Web app / quick exploration   ❌ No            ❌ No
-  Full   Local scientific use          ✔ Yes            ✔ Yes
-
-The mode is controlled internally via environment configuration.
-
-------------------------------------------------------------------------
 
 # 📦 Data & Reproducibility
 
