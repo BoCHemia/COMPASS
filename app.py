@@ -31,11 +31,15 @@ def main():
     
     IS_DEMO = MODE == "demo"
     
-    if IS_DEMO:
+    # if IS_DEMO:
+    if MODE == "demo":
         DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/18719735/files/demo_assets.zip")
         DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "6fede55bf124fe97652faef249739aca")
 
         ASSET_ROOT = get_demo_assets_root(DEMO_ZIP_URL, expected_md5=DEMO_ZIP_MD5)
+    elif MODE == "test_demo":
+        ASSET_ROOT = "demo_assets"  # for testing the demo assets locally without downloading from Zenodo each time
+    
     else:
         ASSET_ROOT = "data"    
 
