@@ -1,5 +1,4 @@
 # import resource
-from PIL.ImImagePlugin import MODE
 import streamlit as st
 import pandas as pd
 import time
@@ -20,6 +19,10 @@ def main():
                             "You can provide your own data set or select from pre-defined target spaces."})
 
 
+    # # # ----------- RESOURCE LIMITS -----------
+    minimal_columns = ['SMILES', 'INCHIKEY', 'IUPAC', 'PREFERRED_NAME',
+       'TSNE1', 'TSNE2', 'Kingdom', 'Superclass',
+       'Class', 'Subclass']
 
     # ----------- APP MODE (currently 'demo' or 'full') ----------- 
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower() 
@@ -302,9 +305,20 @@ def main():
             return load_coordinates(folder_name, file_name, reference_data, base_dir=ASSET_ROOT)
 
         # load reference coordinates
-        reference_coordinates = load_coordinates_to_cache(reference_folder_name, reference_file_name)
+        reference_coordinates_full = load_coordinates_to_cache(reference_folder_name, reference_file_name)
         status.info("Loading reference coordinates complete")
         project_progress_bar.progress(50)
+
+
+        # The plotly for the reference space is still too much to handle when there are >25k points, so for the demo we will only show a subset of the reference space; for the full app we can show the full reference space since it will be hosted locally and not have the same performance issues as Streamlit Cloud; this is a temporary solution until we can implement more advanced solutions for handling large datasets in Streamlit Cloud (e.g., datashader, server-side rendering, etc.)
+        if IS_DEMO:
+            MAX_REF_POINTS = 450_000  # tune
+            if len(reference_coordinates_full) > MAX_REF_POINTS:
+                reference_coordinates = reference_coordinates_full.sample(n=MAX_REF_POINTS, random_state=0)
+            else:
+                reference_coordinates = reference_coordinates_full
+        else:
+            reference_coordinates = reference_coordinates_full
 
         # load target coordinates
         if target_space:

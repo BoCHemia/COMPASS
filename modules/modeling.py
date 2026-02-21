@@ -20,6 +20,12 @@ import joblib
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent 
 
+minimal_columns = ['SMILES', 'INCHIKEY', 'PREFERRED_NAME',
+       'TSNE1', 'TSNE2', 'Kingdom', 'Superclass',
+       'Class', 'Subclass']
+
+
+
 def ensure_dirs():
     """
     Ensure that the folders temp and output exist, and if not, create them
@@ -184,7 +190,7 @@ def load_coordinates(folder_name, file_name, reference_data="", base_dir="data")
     if reference_data:
         file_name += f'_on_{reference_data}'
     coordinates_path = os.path.join(PROJECT_ROOT, base_dir, folder_name, "output_" + file_name + '.csv')
-    coordinates = pd.read_csv(coordinates_path)
+    coordinates = pd.read_csv(coordinates_path, usecols=minimal_columns)
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
