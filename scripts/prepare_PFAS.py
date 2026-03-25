@@ -36,7 +36,7 @@ df = df.drop_duplicates().reset_index(drop=True)
 # Standardize SMILES
 # -----------------------------
 df_std= standardize_structures(df)
-df_std = standardize_structures(df)
+df_std["standardized SMILES"] = df_std["standardized SMILES"].replace('', np.nan)
 
 print("Dropping ", df_std["standardized SMILES"].isna().sum(), " records with missing structures after standardization.")
 df_std = df_std.dropna(subset=["standardized SMILES"]).reset_index(drop=True)

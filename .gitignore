@@ -10,6 +10,9 @@ models/*
 __pycache__
 .DS_Store
 
+# Local-only files for development
+jose_local_only/
+
 # Ignore all zip
 *.zip
 
@@ -36,3 +39,7 @@ data/COCONUT/*
 data/DrugBank/*
 data/AgroTrak/*
 data/PFAS/*
+
+
+# Ignore demo_assets folder. Eventually this will be fetched from Zenodo
+demo_assets/

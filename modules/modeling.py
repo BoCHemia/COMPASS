@@ -20,6 +20,12 @@ import joblib
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent 
 
+minimal_columns = ['SMILES', 'INCHIKEY', 'PREFERRED_NAME',
+       'TSNE1', 'TSNE2', 'Kingdom', 'Superclass',
+       'Class', 'Subclass']
+
+
+
 def ensure_dirs():
     """
     Ensure that the folders temp and output exist, and if not, create them
@@ -166,12 +172,13 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     if reference_name:
         file_name += "_on_" + reference_name
     # save df, annotated with TSNE coordinates
-    output_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
-    df_coordinates.to_csv(output_path, index=False)
-    print(f"Saved coordinates to {output_path}")
+    # Refacting note: output_path -> coordinates_path
+    coordinates_path = os.path.join(PROJECT_ROOT, 'data', folder_name, "output_" + file_name + '.csv')
+    df_coordinates.to_csv(coordinates_path, index=False)
+    print(f"Saved coordinates to {coordinates_path}")
 
     
-def load_coordinates(folder_name, file_name, reference_data=""):
+def load_coordinates(folder_name, file_name, reference_data="", base_dir="data"):
     """
     Load tSNE coordinates from file
 
@@ -182,8 +189,8 @@ def load_coordinates(folder_name, file_name, reference_data=""):
     """
     if reference_data:
         file_name += f'_on_{reference_data}'
-    coordinates_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
-    coordinates = pd.read_csv(coordinates_path)
+    coordinates_path = os.path.join(PROJECT_ROOT, base_dir, folder_name, "output_" + file_name + '.csv')
+    coordinates = pd.read_csv(coordinates_path, usecols=minimal_columns)
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
@@ -214,12 +221,13 @@ def load_model(file_name, from_zip=False, use_joblib=False):
 # Modeling (for the target space)
 # -----------------------------
 
-def transform_target(model, fingerprints, **kwargs):
+def transform_target(model, fingerprints, offset, **kwargs):
     """
     Transform fingerprints using the provided tSNE model
 
     :param model: trained tSNE model
     :param fingerprints: fingerprint matrix, including a column "INCHIKEY"
+    :param offset: model-specific offset values to correct the transformed coordinates
     :return: coordinates of the input compounds in the tSNE space
     """
     # Prepare boolean fingerprint array
@@ -231,7 +239,7 @@ def transform_target(model, fingerprints, **kwargs):
     print("Transforming worked")
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
     coordinates_df.index = fingerprints['INCHIKEY']
-
+    coordinates_df = coordinates_df - offset.values
     return coordinates_df
 
 def lookup_target(fingerprints, reference_data):
@@ -263,7 +271,7 @@ def lookup_target(fingerprints, reference_data):
     print(f'{found_compounds} compounds (out of {fingerprints.shape[0]}) could be found in the reference space')
     return lookup_coordinates_df
 
-def lookup_or_transform_target(model, fingerprints, reference_data):
+def lookup_or_transform_target(model, fingerprints, offset, reference_data):
     """
     Looks up TSNE coordinates in the reference data. For compounds that could not be found in the reference,
     TSNE coordinates are calculated via the provided tSNE model.
@@ -284,7 +292,7 @@ def lookup_or_transform_target(model, fingerprints, reference_data):
     transform_fingerprints = remaining_compounds_df.merge(fingerprints, how='left', on='INCHIKEY')
 
     # transform fingerprints
-    transform_coordinates_df =  transform_target(model, transform_fingerprints)
+    transform_coordinates_df =  transform_target(model, transform_fingerprints, offset)
 
     # add coordinates from lookup
     lookup_coordinates = lookup_coordinates_df.dropna(subset=['TSNE1'])

@@ -15,6 +15,9 @@ RUN useradd \
     appuser
 
 ENV HOME=/home/appuser
+ENV XDG_CACHE_HOME=/home/appuser/.cache
+ENV STREAMLIT_CONFIG_DIR=/home/appuser/.streamlit
+
 WORKDIR /app
 
 # Install system dependencies as root (no special mounts needed here)
