@@ -5,8 +5,8 @@ import time
 import os
 import plotly.express as px
 
-from modules.modeling import load_coordinates
-from modules.visualizing import plot_chemical_space, plot_treemap
+from modules.modeling import extract_knn_results, load_coordinates
+from modules.visualizing import detect_color_type, plot_chemical_space, plot_similarity_histograms, plot_similarity_threshold_pie, plot_treemap
 from modules.preprocessing import get_demo_assets_root
 
 def main():
@@ -21,9 +21,8 @@ def main():
 
 
     # # # ----------- RESOURCE LIMITS -----------
-    minimal_columns = ['SMILES', 'INCHIKEY', 'IUPAC', 'PREFERRED_NAME',
-       'TSNE1', 'TSNE2', 'Kingdom', 'Superclass',
-       'Class', 'Subclass']
+    minimal_columns = ['SMILES', 'INCHIKEY', 'IUPAC', 'PREFERRED_NAME', 
+                       'TSNE1', 'TSNE2', 'Kingdom', 'Superclass','Class', 'Subclass']
 
     # ----------- APP MODE LOGIC (currently 'demo' or 'full') ----------- 
     # ---------------- The test_demo mode is only for testing the demo assets locally without downloading from Zenodo each time, and should not be exposed to users in the app; this is just for development purposes ----------------
@@ -166,6 +165,14 @@ def main():
             st.info("Please upload a CSV file to proceed.")
             st.stop()
 
+    # Step 2.5: Select similarity settings (optional) 
+    include_similarity = st.sidebar.checkbox("include similarity calculation")
+
+    if IS_DEMO & include_similarity:
+            st.sidebar.warning("Uploading similarity calculations are currently not available in the demo version." \
+            "The full version is distributed using Docker and can be run locally on your machine;" \
+            "please follow this [link](https://github.com/BoCHemia/global-chemical-space/tree/develop) and refer to the README for instructions. ")
+            
 
     # Step 3: Activate mapping --  Can we make the form/button more beautiful?
     with st.sidebar.form("config_form", clear_on_submit=False, border=False): 
@@ -360,8 +367,30 @@ def main():
         if target_space:
             target_coordinates = load_coordinates_to_cache(target_folder_name, target_file_name, reference_data=reference_file_name)
             status.info("Loading target coordinates complete")
-            project_progress_bar.progress(70)
-        
+            project_progress_bar.progress(60)
+
+        # Similarity calculation
+        if include_similarity:
+            if not IS_DEMO:
+                status.info("Calculating similarity between target and reference chemicals")
+                from modules.modeling import create_fpsim2_engine, compute_similarity_fpsim2, extract_knn_results
+
+                max_k = 10  # maximum number of neighbors we want to allow based on calculation speed - should check what is feasible
+
+                # Reference to Target
+                engine, valid_idx = create_fpsim2_engine(target_coordinates, file_name=os.path.join("/tmp", f"fp_{target_file_name}"), smiles_col="SMILES")
+                knn_result_ref, valid_idx_ref = compute_similarity_fpsim2(engine, reference_coordinates, smiles_col='SMILES', k=max_k)
+                knn_sim_ref, knn_idx_ref = extract_knn_results(knn_result_ref, valid_idx_ref, max_k)
+                project_progress_bar.progress(80)
+
+                # Target (self-similarity)
+                knn_result_self, valid_idx_self= compute_similarity_fpsim2(engine, target_coordinates, smiles_col='SMILES', k=max_k+1)
+                knn_sim_self, knn_idx_self= extract_knn_results(knn_result_self, valid_idx_self, max_k+1)
+                project_progress_bar.progress(90)
+            else:
+                pass
+                # load pre-calculated similarity for demo ???
+
         project_progress_bar.progress(100)
         status.success("Done!!!")
 
@@ -399,6 +428,11 @@ def main():
 
             if dataset_to_color == "Reference":
                 hue_options_ref = [None] + list(set(reference_coordinates.columns) & set(allowed_hue_columns(reference_file_name)))
+
+                if include_similarity:
+                    hue_options_ref += ['Similarity']
+
+
                 hue_ref = cols[1].selectbox("Color reference by", hue_options_ref, index=0)
                 hue_target = None  # reset target coloring
             else:
@@ -407,16 +441,50 @@ def main():
                     hue_options_target = [None] +  [c for c in list(target_coordinates.columns) if c not in drop_list]
                 else:
                     hue_options_target =  [None] + list(set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
+                
+                if include_similarity:
+                    hue_options_target += ['Similarity']
+                
                 hue_target = cols[1].selectbox("Color target by", hue_options_target, index=0)
                 hue_ref = None  # reset reference coloring
 
+            # similarity settings
+            if include_similarity: #hue_ref=='Similarity' or hue_target=='Similarity':
+
+                similarity_k = cols[0].number_input("Number of nearest neighbors for similarity", min_value=1, max_value=max_k, value=5)
+                similarity_threshold = cols[1].selectbox("Similarity threshold", [None, 'default', 'custom'], index=0,
+                                                         help="default = mean similarity of target chemicals to their k nearest neighbors within the target set.")
+
+                similarity_ref = knn_sim_ref.iloc[:, :similarity_k].mean(axis=1)
+                similarity_target = knn_sim_self.iloc[:, 1:similarity_k+1].mean(axis=1)
+
+                if similarity_threshold is None:
+                    threshold = None
+                    reference_coordinates['Similarity'] = similarity_ref
+                    target_coordinates['Similarity'] = similarity_target
+
+                else:
+                    if similarity_threshold=='default':
+                        threshold = knn_sim_self.iloc[:, 1:similarity_k].mean(axis=1).mean()
+
+                    elif similarity_threshold=='custom':
+                        default = knn_sim_self.iloc[:, 1:similarity_k].mean(axis=1).mean()
+                        threshold = cols[1].slider("Similarity threshold", min_value=0.0, max_value=1.0, value=default)
+
+                    reference_coordinates['Similarity'] = (similarity_ref>=threshold)
+                    target_coordinates['Similarity'] = (similarity_target>=threshold)
+
+        binary_color_map = {True: '#1f77b4', False: "#E9AAAA"}
+   
         # - reference set
         hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
         hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
 
         if hue_ref:
-            color_type_ref =  'continuous' if pd.api.types.is_numeric_dtype(reference_coordinates[hue_ref]) else 'discrete'
-            palette_ref = 'Alphabet' if color_type_ref == 'discrete' else 'Turbo'
+            color_type_ref = detect_color_type(reference_coordinates[hue_ref])
+            palette_ref = ('Alphabet' if color_type_ref == 'discrete' 
+                           else binary_color_map if color_type_ref == 'binary' 
+                           else'Spectral')
 
             figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space', 
                                         hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
@@ -434,11 +502,13 @@ def main():
             hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
 
             if hue_target:
+                
+                color_type_target =  detect_color_type(target_coordinates[hue_target])
+                palette_target = ('Alphabet' if color_type_target == 'discrete' 
+                                  else binary_color_map if color_type_target == 'binary' 
+                                  else'Spectral')
 
-                color_type_target =  'continuous' if pd.api.types.is_numeric_dtype(target_coordinates[hue_target]) else 'discrete'
-                palette_target = 'Alphabet' if color_type_target == 'discrete' else 'Turbo'
-
-                figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
+                figure_1 = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
                                             hover_name='PREFERRED_NAME', hover_data=hover_data_available,
                                             column_for_color_map=hue_target, color_type=color_type_target, palette=palette_target,
                                             symbol='diamond', size=3, opacity=0.5)
@@ -446,17 +516,37 @@ def main():
                 color = 'black'
                 if darkmode:
                     color = 'white'
-                figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
+                figure_1 = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
                                             hover_name='PREFERRED_NAME', hover_data=hover_data_available, color='black', 
                                             symbol='diamond', size=3, opacity=0.7)
         
-        st.plotly_chart(figure, use_container_width=True)
+        st.plotly_chart(figure_1, use_container_width=True)
 
+        # Add similarity plots if similarity is included
+        if include_similarity:
+            col1, col2 = st.columns(2)  # create two columns
+
+            with col1:
+                figure_2 = plot_similarity_histograms(similarity_ref, similarity_target, threshold=threshold)
+                with st.container(border=True):
+                    st.plotly_chart(figure_2, use_container_width=True)
+
+            with col2:
+                if threshold is not None:
+                    figure_3 = None
+                    if dataset_to_color=='Reference':
+                        figure_3 = plot_similarity_threshold_pie(similarity_ref, set_name='Reference', threshold=threshold)
+                    elif dataset_to_color=='Target':
+                        figure_3 = plot_similarity_threshold_pie(similarity_target, set_name='Target', threshold=threshold)
+
+                    if figure_3 is not None:
+                        with st.container(border=True):
+                            st.plotly_chart(figure_3, use_container_width=True)
 
     with st.container(border=True):
         fragment_plot_chemical_space()
-        
 
+        
     ###### Plot 2: Treemap #####
     @st.fragment
     def fragment_plot_treemap():
