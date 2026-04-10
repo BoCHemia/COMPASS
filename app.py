@@ -272,7 +272,8 @@ def main():
     @st.fragment
     def fragment_plot_chemical_space():    # defining a fragment functions ensure that Streamlit only reruns this part when selecting hue column
         # - Color settings
-        col_plot, col_info = st.columns([3, 1])
+        show = st.toggle("Visualize selected molecule")
+        col_plot, col_info = st.columns([3, 1 if show else 0.01])
         with col_plot:
             with st.container(border=False):
 
@@ -352,32 +353,33 @@ def main():
                 on_select="rerun",
             )
         with col_info:
-            st.subheader("Selected molecule")
-            if selected:
-                selected_datapoint = selected["selection"]["points"]
-                if selected_datapoint:
-                    # st.markdown(selected_datapoint[0])
-                    idx = selected_datapoint[0]["point_index"]
-                    origin = selected_datapoint[0]["customdata"][-1] # data origin to be found
-                    if 'reference space' in origin:
-                        row = reference_coordinates.iloc[idx]
-                    elif 'target space' in origin:
-                        row = target_coordinates.iloc[idx]
-                    else:
-                        st.markdown(f"No data found for {origin}")
+            if show:
+                st.subheader("Selected molecule")
+                if selected:
+                    selected_datapoint = selected["selection"]["points"]
+                    if selected_datapoint:
+                        # st.markdown(selected_datapoint[0])
+                        idx = selected_datapoint[0]["point_index"]
+                        origin = selected_datapoint[0]["customdata"][-1] # data origin to be found
+                        if 'reference space' in origin:
+                            row = reference_coordinates.iloc[idx]
+                        elif 'target space' in origin:
+                            row = target_coordinates.iloc[idx]
+                        else:
+                            st.markdown(f"No data found for {origin}")
 
-                    mol = Chem.MolFromSmiles(row["SMILES"])
-                    st.image(Draw.MolToImage(mol, size=(300, 300)))
+                        mol = Chem.MolFromSmiles(row["SMILES"])
+                        st.image(Draw.MolToImage(mol, size=(300, 300)))
 
-                    st.markdown("### Properties")
-                    st.write(f"**Data origin:** {origin}")
-                    st.write(f"**Name:** {row['PREFERRED_NAME']}")
-                    st.write(f"**SMILES:** {row['SMILES']}")
-                    st.write(f"**InChIKey:** {row['INCHIKEY']}")
+                        st.markdown("### Properties")
+                        st.write(f"**Data origin:** {origin}")
+                        st.write(f"**Name:** {row['PREFERRED_NAME']}")
+                        st.write(f"**SMILES:** {row['SMILES']}")
+                        st.write(f"**InChIKey:** {row['INCHIKEY']}")
 
 
-            else:
-                st.info("Select a molecule from the plot.")
+                else:
+                    st.info("Select a molecule from the plot.")
 
 
     with st.container(border=True):
