@@ -39,3 +39,7 @@ data/COCONUT/*
 data/DrugBank/*
 data/AgroTrak/*
 data/PFAS/*
+
+
+# Ignore demo_assets folder. Eventually this will be fetched from Zenodo
+demo_assets/

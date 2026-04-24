@@ -75,14 +75,33 @@ def get_color_map(palette, df, column_for_color_map):
     return color_map
 
 
+def detect_color_type(series):
+    s = series.dropna()
+    
+    # boolean
+    if pd.api.types.is_bool_dtype(s):
+        return 'binary'
+    
+    # numeric or boolean
+    if pd.api.types.is_numeric_dtype(s):
+        unique_vals = set(s.unique())
+        if unique_vals.issubset({0, 1}):
+            return 'binary'
+        return 'continuous'
+    
+    # general categorical
+    if s.nunique() == 2:
+        return 'binary'
+
+    return 'discrete'
 
 
 def plot_chemical_space(df, nametag = '', map_on=None,
                    hover_name = 'SMILES', hover_data = ['INCHIKEY'], # minimal input requirements
                    color='lightgrey',
                    column_for_color_map = None,
-                   color_type='discrete',
-                   palette='Alphabet',
+                   color_type=None,
+                   palette=None,
                    size=3, opacity=0.7, symbol='circle', height=700, width=1200):
     """
     Map data into new or onto existing chemical space plot
@@ -94,7 +113,7 @@ def plot_chemical_space(df, nametag = '', map_on=None,
     :param hover_data: data columns to be shown in display box
     :param color: default color for data points
     :param column_for_color_map: column to be color mapped
-    :param color_type: 'discrete' or 'continuous'
+    :param color_type: 'binary', 'discrete' or 'continuous'
     :param palette: continuous plotly palette, a list of colors, or a mapping dictionary
     :param size: size of data points
     :param opacity: opacity of data points
@@ -137,6 +156,15 @@ def plot_chemical_space(df, nametag = '', map_on=None,
                                    color=column_for_color_map, color_continuous_scale=color_continuous_scale)
             input_fig.update_traces(marker=dict(size=size, opacity=opacity, line=dict(width=0)))
 
+        elif color_type== 'binary': # binary coloring
+            print("Use {} column to color map as binary".format(column_for_color_map))
+            color_binary_map = palette
+            input_fig = px.scatter(df, x="TSNE1", y="TSNE2",
+                                   hover_name = hover_name, hover_data=hover_data,
+                                   render_mode="webgl", height=height, width=width, 
+                                   color=column_for_color_map, color_discrete_map=color_binary_map)
+            input_fig.update_traces(marker=dict(size=size, opacity=opacity, symbol=symbol, line=dict(width=0)))
+
         else:
             raise ValueError("color_type must be discrete or continuous")
 
@@ -145,9 +173,8 @@ def plot_chemical_space(df, nametag = '', map_on=None,
         input_fig = px.scatter(df, x="TSNE1", y="TSNE2", hover_name=hover_name, hover_data=hover_data,
                         render_mode="webgl", height=height, width=width)
         input_fig.update_traces(marker=dict(color=color, size=size, opacity=opacity, line=dict(width=0)),
-            name=nametag)
+                                name=nametag, showlegend=False)
         
-        input_fig.update_traces(showlegend=False)
         input_fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', 
                                        marker=dict(color=color, size=12, opacity=1),
                                        legendgroup=nametag, showlegend=True, name=nametag))
@@ -162,8 +189,12 @@ def plot_chemical_space(df, nametag = '', map_on=None,
     
     # merge data
     if map_on is not None:
-        fig = map_on
-        merged_fig = go.Figure(data=fig.data + input_fig.data, layout=input_fig.layout)
+
+        if palette is None:
+            merged_fig = go.Figure(data=map_on.data + input_fig.data, layout=map_on.layout) 
+        else:
+            merged_fig = go.Figure(data=map_on.data + input_fig.data, layout=input_fig.layout) 
+
     else:
         merged_fig = input_fig
 
@@ -172,8 +203,6 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
     merged_fig.update_layout(
         margin=dict(l=40, r=40, t=40, b=40),
-        # paper_bgcolor='white',
-        # plot_bgcolor='white',
         font_color='black',
         xaxis=dict(title="TSNE1",visible=False, showgrid=False, zeroline=False,
                     fixedrange=False),
@@ -190,6 +219,130 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
     return merged_fig
 
+def plot_similarity_histograms(sim_ref, sim_target, threshold=None, nbins=100, opacity=0.7):
+    """
+    Plot overlaid similarity histograms for reference and target datasets.
+    
+    :param sim_ref: pd.Series containing similarity values for the reference set
+    :param sim_target: pd.Series containing similarity values for the target set
+    :param nbins: int, number of histogram bins
+    :param opacity: float, opacity for overlaid bars
+    :return: plotly.graph_objects.Figure
+    """
+    # Add a dataset identifier
+    df_ref_plot = sim_ref.to_frame(name='Similarity').copy()
+    df_ref_plot['dataset'] = 'Reference'
+    
+    df_target_plot = sim_target.to_frame(name='Similarity').copy()
+    df_target_plot['dataset'] = 'Target'
+    
+    # Concatenate for plotting
+    df_plot = pd.concat([df_ref_plot, df_target_plot], axis=0)
+    
+
+    custom_colors = {'Reference': "#adadad",
+                    'Target': '#000000'}
+    
+    # Create histogram
+    fig = px.histogram(
+        df_plot,
+        x='Similarity',
+        color='dataset',
+        nbins=nbins,
+        color_discrete_map=custom_colors,
+        histnorm='probability density',  # normalize to density
+        opacity=opacity,
+        barmode='overlay',
+        labels={'Similarity': 'mean similarity to k nearest neighbors', 'dataset': ''},
+    )
+
+    # Add vertical lines at means
+
+    line_colors = {'Reference': "#AAA7A7",
+                    'Target': '#000000'}
+    
+    mean_ref = df_ref_plot['Similarity'].mean()
+    mean_target = df_target_plot['Similarity'].mean()
+
+    fig.add_vline(x=mean_ref, line=dict(color=line_colors['Reference'], width=2, dash='dash'),
+                annotation_text=f"mean:\n{mean_ref:.2f}", annotation_position="top", annotation_y = 0.95, 
+                annotation_font=dict(color=line_colors['Reference'], size=12))
+    fig.add_vline(x=mean_target, line=dict(color=line_colors['Target'], width=2, dash='dash'),
+                annotation_text=f"mean:\n{mean_target:.2f}", annotation_position="top", annotation_y = 1.00, 
+                annotation_font=dict(color=line_colors['Target'], size=12))
+    
+    # Add vertical line for threshold if provided 
+    if threshold is not None: 
+        fig.add_vline(x=threshold, line=dict(color='red', width=2, dash='dot'), 
+                    annotation_text=f"threshold:\n{threshold:.2f}", annotation_position="top", annotation_y = 1.05, 
+                    annotation_font=dict(color='red', size=12))
+        
+        dens_ref, _ = np.histogram(sim_ref, bins=nbins, density=True)
+        dens_target, _ = np.histogram(sim_target, bins=nbins, density=True)
+        y_max = max(dens_ref.max(), dens_target.max())*1.2
+
+        fig.update_yaxes(range=[0, y_max])
+    
+    fig.update_layout(
+        title=dict(text=f'Distribution of similarity with Target chemicals',x=0.5,xanchor='center'),
+        margin=dict(l=40, r=40, t=80, b=40),
+        font_color='black',
+        # align legend look 
+        legend_tracegroupgap=0, 
+        legend_itemsizing='constant',
+        font=dict(
+            family="Arial",
+            size=12,
+            color="black"),)
+    
+    return fig
+
+
+
+def plot_similarity_threshold_pie(similarity, set_name, threshold=None, colors={'Above': '#1f77b4', 'Below': "#E9AAAA"}):
+    """
+    Create a pie chart showing the fraction of reference chemicals above/below a similarity threshold.
+
+    :param similarity: pd.Series with similarity values for the reference set
+    :param threshold: float, similarity threshold
+    :param set_name: str, name of the chemical set
+    :param colors: dict, mapping {'Above': color1, 'Below': color2}
+    :return: plotly.graph_objects.Figure
+    """
+    if threshold is None:
+        raise ValueError("Threshold must be provided for pie chart.")
+
+    above_count = (similarity >= threshold).sum()
+    below_count = (similarity < threshold).sum()
+
+    df_pie = pd.DataFrame({
+        'Category': ['Above', 'Below'],
+        'Count': [above_count, below_count]
+    })
+
+    fig = px.pie(
+        df_pie,
+        names='Category',
+        values='Count',
+        color='Category',
+        color_discrete_map=colors,
+        hole=0.3  # optional, makes it a donut chart
+    )
+
+    fig.update_traces(
+        textposition='inside',
+        textinfo='percent+label',
+        pull=[0.05, 0]  # slightly "pop" the first slice
+    )
+
+    fig.update_layout(
+        title=dict(text=f'Fraction of {set_name} chemicals above and below similarity threshold ({threshold:.2f})', x=0.5, xanchor='center'),
+        margin=dict(l=40, r=40, t=40, b=40),
+        showlegend=True,
+        font=dict(family="Arial", size=12, color="black")
+    )
+
+    return fig
 
 def plot_treemap(df, palette='Alphabet'):
     """

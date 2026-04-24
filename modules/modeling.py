@@ -20,6 +20,12 @@ import joblib
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent 
 
+minimal_columns = ['SMILES', 'INCHIKEY', 'PREFERRED_NAME',
+       'TSNE1', 'TSNE2', 'Kingdom', 'Superclass',
+       'Class', 'Subclass']
+
+
+
 def ensure_dirs():
     """
     Ensure that the folders temp and output exist, and if not, create them
@@ -166,12 +172,13 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     if reference_name:
         file_name += "_on_" + reference_name
     # save df, annotated with TSNE coordinates
-    output_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
-    df_coordinates.to_csv(output_path, index=False)
-    print(f"Saved coordinates to {output_path}")
+    # Refacting note: output_path -> coordinates_path
+    coordinates_path = os.path.join(PROJECT_ROOT, 'data', folder_name, "output_" + file_name + '.csv')
+    df_coordinates.to_csv(coordinates_path, index=False)
+    print(f"Saved coordinates to {coordinates_path}")
 
     
-def load_coordinates(folder_name, file_name, reference_data=""):
+def load_coordinates(folder_name, file_name, reference_data="", base_dir="data"):
     """
     Load tSNE coordinates from file
 
@@ -182,8 +189,8 @@ def load_coordinates(folder_name, file_name, reference_data=""):
     """
     if reference_data:
         file_name += f'_on_{reference_data}'
-    coordinates_path = os.path.join(PROJECT_ROOT, "data", folder_name, "output_" + file_name + '.csv')
-    coordinates = pd.read_csv(coordinates_path)
+    coordinates_path = os.path.join(PROJECT_ROOT, base_dir, folder_name, "output_" + file_name + '.csv')
+    coordinates = pd.read_csv(coordinates_path, usecols=minimal_columns)
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
@@ -290,3 +297,70 @@ def lookup_or_transform_target(model, fingerprints, offset, reference_data):
     lookup_coordinates = lookup_coordinates_df.dropna(subset=['TSNE1'])
     coordinates_df = pd.concat([transform_coordinates_df, lookup_coordinates], axis=0)
     return coordinates_df
+
+# -----------------------------
+# Similarity calculation
+# -----------------------------
+
+from FPSim2 import FPSim2Engine
+from FPSim2.io import create_db_file
+
+def filter_valid_smiles(df, smiles_col="SMILES"):
+    valid_smiles = []
+    valid_idx = []
+
+    for i, smi in enumerate(df[smiles_col].values):
+        if not isinstance(smi, str) or smi == "":
+            continue
+
+        mol = Chem.MolFromSmiles(smi)
+        if mol is None:
+            continue
+
+        valid_smiles.append(smi)
+        valid_idx.append(i)
+
+    return valid_smiles, valid_idx
+
+
+def create_fpsim2_engine(df, file_name, smiles_col="SMILES"):
+    smiles, valid_idx = filter_valid_smiles(df, smiles_col=smiles_col)
+    smiles_list = list(zip(smiles, valid_idx))
+
+    create_db_file(
+        mols_source=smiles_list,
+        filename=file_name,
+        mol_format='smiles',
+        fp_type='Morgan',
+        fp_params={'radius': 2, 'fpSize': 512}
+    )
+
+    engine = FPSim2Engine(file_name)
+
+    return engine, valid_idx
+
+
+def compute_similarity_fpsim2(engine, df_ref, smiles_col='SMILES', k=10):
+       
+    smiles_ref, valid_idx_ref = filter_valid_smiles(df_ref, smiles_col=smiles_col)
+
+    knn_result = [engine.top_k(smi, k=k, threshold=0.0, metric='tanimoto') for smi in smiles_ref] # setting n_workers did not improve speed
+    
+    return knn_result, valid_idx_ref
+
+
+def extract_knn_results(knn_result, valid_idx_ref, k):
+    n_query = len(valid_idx_ref)
+    sim_array = np.zeros((n_query, k), dtype=np.float32)
+    idx_array = np.zeros((n_query, k), dtype=int)
+
+    for row_idx, results in enumerate(knn_result):
+        for col_idx, (db_idx, sim) in enumerate(results):
+            sim_array[row_idx, col_idx] = sim
+            idx_array[row_idx, col_idx] = db_idx # note: this is already valid_idx 
+
+    df_sim = pd.DataFrame(sim_array, index=valid_idx_ref, columns=[f'knn_{i+1}_similarity' for i in range(k)])
+    df_idx = pd.DataFrame(idx_array, index=valid_idx_ref, columns=[f'knn_{i+1}_index' for i in range(k)])
+
+    return df_sim, df_idx
+

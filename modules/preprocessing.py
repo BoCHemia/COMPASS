@@ -499,3 +499,68 @@ def get_inchikeys_df(df, col_smiles):
 
     return inchikey_df
 
+
+
+# -----------------------------
+# Retrieve data from Zenodo
+# -----------------------------
+import streamlit as st
+import requests
+import hashlib
+import zipfile  
+
+def _md5_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    h = hashlib.md5()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+def get_demo_assets_root(zip_url: str, expected_md5: str | None = None) -> str:
+    """
+    Returns local path to extracted demo_assets folder.
+    Downloads/extracts only if needed. Uses disk cache (not RAM).
+    """
+    cache_base = Path.home() / ".cache" / "compass_demo_assets"
+    cache_base.mkdir(parents=True, exist_ok=True)
+
+    zip_path = cache_base / "demo_assets.zip"
+    extract_root = cache_base / "demo_assets"
+    marker = cache_base / ".extracted_ok"
+
+    # Download if missing
+    if not zip_path.exists():
+        with st.spinner("Downloading demo assets (first run only)..."):
+            r = requests.get(zip_url, stream=True, timeout=120)
+            r.raise_for_status()
+            with zip_path.open("wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
+
+    # Verify checksum (recommended)
+    if expected_md5:
+        actual = _md5_file(zip_path)
+        if actual.lower() != expected_md5.lower():
+            # If corrupted/partial download, delete and fail loudly
+            zip_path.unlink(missing_ok=True)
+            marker.unlink(missing_ok=True)
+            raise RuntimeError(f"MD5 mismatch for demo_assets.zip: expected {expected_md5}, got {actual}")
+
+    # Extract if needed
+    if not marker.exists() or not extract_root.exists():
+        with st.spinner("Extracting demo assets (first run only)..."):
+            # (optional) remove partial extraction
+            if extract_root.exists():
+                # keep it simple; you can delete recursively if needed
+                pass
+
+            with zipfile.ZipFile(zip_path, "r") as z:
+                z.extractall(cache_base)
+
+            if not extract_root.exists():
+                raise RuntimeError("Expected 'demo_assets/' folder not found after extraction. Check zip structure.")
+
+            marker.write_text("ok")
+
+    return str(extract_root)
