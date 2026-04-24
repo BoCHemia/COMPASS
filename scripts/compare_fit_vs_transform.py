@@ -29,7 +29,7 @@ df = pd.read_csv(os.path.join(input_path, input_file_name))
 df['standardized SMILES'] = standardize_smiles_df(df, col_smiles)
 
 # Fingerprint caculation
-fingerprints = calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=2, fpSize=1024)
+fingerprints, _ = calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=2, fpSize=1024)
 df_fingerprints = pd.concat([df, fingerprints], axis=1)
 fps = np.array(df_fingerprints.iloc[:, -1024:].astype('bool'))
 

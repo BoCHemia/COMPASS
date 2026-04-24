@@ -3,7 +3,8 @@ import streamlit as st
 import pandas as pd
 import time
 import os
-import plotly.express as px
+from rdkit import Chem
+from rdkit.Chem import Draw
 
 from modules.modeling import load_coordinates
 from modules.visualizing import plot_chemical_space, plot_treemap
@@ -170,7 +171,7 @@ def main():
                 progress_bar = st.progress(0)
                 status_userdata = st.empty()
 
-                from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints
+                from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints, update_df
 
                 progress_bar.progress(5)
                 
@@ -192,14 +193,13 @@ def main():
                     else:
                         status_userdata.status("ClassyFire information merged; all substances have taxonomy information.")
 
-                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name )
-                
                 progress_bar.progress(20)
                 status_userdata.info("User data was preprocessed and saved in user folder")
 
                 # - fingerprints
                 status_userdata.info("Calculating fingerprints")
-                new_fingerprints = calculate_fingerprints(df_user)
+                new_fingerprints, df_user = calculate_fingerprints(df_user)
+                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name)
                 save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
                 
                 progress_bar.progress(30)
@@ -271,79 +271,114 @@ def main():
     @st.fragment
     def fragment_plot_chemical_space():    # defining a fragment functions ensure that Streamlit only reruns this part when selecting hue column
         # - Color settings
-        with st.container(border=False):
+        show = st.toggle("Visualize selected molecule")
+        col_plot, col_info = st.columns([3, 1 if show else 0.01])
+        with col_plot:
+            with st.container(border=False):
 
-            def allowed_hue_columns(file_name):
-                classyfire = ['Kingdom', 'Superclass', 'Class', 'Subclass']
-                if 'zeropm' in file_name:
-                    hue_columns = classyfire
-                elif 'zhang' in file_name:
-                    hue_columns = classyfire + ['Chemical class', 'Primary target class', 'Mode of action', 'Mode of action group']
+                def allowed_hue_columns(file_name):
+                    classyfire = ['Kingdom', 'Superclass', 'Class', 'Subclass']
+                    if 'zeropm' in file_name:
+                        hue_columns = classyfire
+                    elif 'zhang' in file_name:
+                        hue_columns = classyfire + ['Chemical class', 'Primary target class', 'Mode of action', 'Mode of action group']
+                    else:
+                        hue_columns = classyfire
+
+                    return hue_columns
+
+                cols = st.columns(2)
+                if target_space:
+                    dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference", "Target", "None"], index=2)
                 else:
-                    hue_columns = classyfire
+                    dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference"], index=0)
 
-                return hue_columns
-
-            cols = st.columns(2)
-            if target_space:
-                dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference", "Target", "None"], index=2)
-            else:
-                dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference"], index=0)
-
-            if dataset_to_color == "Reference":
-                hue_options_ref = [None] + list(set(reference_coordinates.columns) & set(allowed_hue_columns(reference_file_name)))
-                hue_ref = cols[1].selectbox("Color reference by", hue_options_ref, index=0)
-                hue_target = None  # reset target coloring
-            else:
-                if target_space == 'my_own_substances':
-                    drop_list = ['PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',  'CASRN', 'IUPAC', 'InChI']
-                    hue_options_target = [None] +  [c for c in list(target_coordinates.columns) if c not in drop_list]
+                if dataset_to_color == "Reference":
+                    hue_options_ref = [None] + list(set(reference_coordinates.columns) & set(allowed_hue_columns(reference_file_name)))
+                    hue_ref = cols[1].selectbox("Color reference by", hue_options_ref, index=0)
+                    hue_target = None  # reset target coloring
                 else:
-                    hue_options_target =  [None] + list(set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
-                hue_target = cols[1].selectbox("Color target by", hue_options_target, index=0)
-                hue_ref = None  # reset reference coloring
+                    if target_space == 'my_own_substances':
+                        drop_list = ['PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',  'CASRN', 'IUPAC', 'InChI']
+                        hue_options_target = [None] +  [c for c in list(target_coordinates.columns) if c not in drop_list]
+                    else:
+                        hue_options_target =  [None] + list(set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
+                    hue_target = cols[1].selectbox("Color target by", hue_options_target, index=0)
+                    hue_ref = None  # reset reference coloring
 
-        # - reference set
-        hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
-        hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
+            # - reference set
+            hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
+            hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
 
-        if hue_ref:
-            color_type_ref =  'continuous' if pd.api.types.is_numeric_dtype(reference_coordinates[hue_ref]) else 'discrete'
-            palette_ref = 'Alphabet' if color_type_ref == 'discrete' else 'Turbo'
+            if hue_ref:
+                color_type_ref =  'continuous' if pd.api.types.is_numeric_dtype(reference_coordinates[hue_ref]) else 'discrete'
+                palette_ref = 'Alphabet' if color_type_ref == 'discrete' else 'Turbo'
 
-            figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space', 
-                                        hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
-                                        column_for_color_map=hue_ref, color_type=color_type_ref, palette=palette_ref)
-        else:
-            color = 'lightgrey'
-            if darkmode:
-                color = 'dimgrey'
-            figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space', 
-                                        hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available, color=color)
-        
-        # - target set
-        if target_space: 
-            hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
-            hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
-
-            if hue_target:
-
-                color_type_target =  'continuous' if pd.api.types.is_numeric_dtype(target_coordinates[hue_target]) else 'discrete'
-                palette_target = 'Alphabet' if color_type_target == 'discrete' else 'Turbo'
-
-                figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
-                                            hover_name='PREFERRED_NAME', hover_data=hover_data_available,
-                                            column_for_color_map=hue_target, color_type=color_type_target, palette=palette_target,
-                                            symbol='diamond', size=3, opacity=0.5)
+                figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space',
+                                            hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
+                                            column_for_color_map=hue_ref, color_type=color_type_ref, palette=palette_ref)
             else:
-                color = 'black'
+                color = 'lightgrey'
                 if darkmode:
-                    color = 'white'
-                figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
-                                            hover_name='PREFERRED_NAME', hover_data=hover_data_available, color='black', 
-                                            symbol='diamond', size=3, opacity=0.7)
-        
-        st.plotly_chart(figure, use_container_width=True)
+                    color = 'dimgrey'
+                figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space',
+                                            hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available, color=color)
+
+            # - target set
+            if target_space:
+                hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
+                hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
+
+                if hue_target:
+
+                    color_type_target =  'continuous' if pd.api.types.is_numeric_dtype(target_coordinates[hue_target]) else 'discrete'
+                    palette_target = 'Alphabet' if color_type_target == 'discrete' else 'Turbo'
+
+                    figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
+                                                hover_name='PREFERRED_NAME', hover_data=hover_data_available,
+                                                column_for_color_map=hue_target, color_type=color_type_target, palette=palette_target,
+                                                symbol='diamond', size=3, opacity=0.5)
+                else:
+                    color = 'black'
+                    if darkmode:
+                        color = 'white'
+                    figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
+                                                hover_name='PREFERRED_NAME', hover_data=hover_data_available, color=color,
+                                                symbol='diamond', size=3, opacity=0.7)
+
+            selected = st.plotly_chart(
+                figure,
+                use_container_width=True,
+                on_select="rerun",
+            )
+        with col_info:
+            if show:
+                st.subheader("Selected molecule")
+                if selected:
+                    selected_datapoint = selected["selection"]["points"]
+                    if selected_datapoint:
+                        # st.markdown(selected_datapoint[0])
+                        idx = selected_datapoint[0]["point_index"]
+                        origin = selected_datapoint[0]["customdata"][-1] # data origin to be found
+                        if 'reference space' in origin:
+                            row = reference_coordinates.iloc[idx]
+                        elif 'target space' in origin:
+                            row = target_coordinates.iloc[idx]
+                        else:
+                            st.markdown(f"No data found for {origin}")
+
+                        mol = Chem.MolFromSmiles(row["SMILES"])
+                        st.image(Draw.MolToImage(mol, size=(300, 300)))
+
+                        st.markdown("### Properties")
+                        st.write(f"**Data origin:** {origin}")
+                        st.write(f"**Name:** {row['PREFERRED_NAME']}")
+                        st.write(f"**SMILES:** {row['SMILES']}")
+                        st.write(f"**InChIKey:** {row['INCHIKEY']}")
+
+
+                else:
+                    st.info("Select a molecule from the plot.")
 
 
     with st.container(border=True):
