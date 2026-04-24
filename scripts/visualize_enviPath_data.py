@@ -11,7 +11,7 @@ import time
 # Settings
 
 input_path = os.path.join(PROJECT_ROOT, "data")
-folder_name = "input"
+folder_name = "_USER"
 file_name = "enviPath"
 
 # Function to load enviPath data from envipath.org
@@ -72,8 +72,10 @@ def load_enviPath_data(from_csv = False, use_legacy=False):
 new_df = load_enviPath_data(from_csv=True)
 
 # preprocess
-# new_fingerprints = preprocess_data(new_df)
-# save_fingerprints(fingerprints=new_fingerprints, file_name=file_name, folder_name=folder_name)
+new_fingerprints, new_df = preprocess_data(new_df)
+update_df(new_df, folder_name, file_name, 'input')
+save_fingerprints(fingerprints=new_fingerprints, file_name=file_name, folder_name=folder_name)
+# new_fingerprints = load_fingerprints(file_name=file_name, folder_name=folder_name)
 
 # transform on ZeroPM
 reference_folder = 'ZeroPM'
@@ -85,19 +87,36 @@ reference_data_name =  'zeropm_partial'
 
 # Load reference coordinates
 reference_coordinates = load_coordinates(reference_folder, reference_data_name)
+reference_fingerprints = load_fingerprints(reference_folder, reference_data_name)
+# reference_fingerprints, reference_coordinates = preprocess_data(reference_coordinates)
+# update_df(reference_coordinates, reference_folder, reference_data_name, 'output')
+# save_fingerprints(fingerprints=reference_fingerprints, file_name=reference_data_name, folder_name=reference_folder)
+
 
 # Load reference model and transform enviPath compounds
-# model = load_model(reference_data_name, use_joblib=True)
-# offset = load_model_offset(reference_data_name)
+model = load_model(reference_data_name, use_joblib=True)
+offset = load_model_offset(reference_data_name)
 
 # Get tSNE coordinates for input molecules
 # coordinates = lookup_or_transform_target(model, new_fingerprints, offset, reference_coordinates)
-# # coordinates = lookup_target(new_fingerprints, reference_coordinates)
-# # coordinates = transform_target(model, new_fingerprints, offset)
-# save_coordinates(coordinates=coordinates,
-#                  folder_name=folder_name,
-#                  file_name=file_name,
-#                  reference_name=reference_data_name)
+# coordinates_lookup = lookup_target(new_fingerprints, reference_coordinates)
+coordinates_transform = transform_target(model, new_fingerprints, offset)
+# all_coordinates = pd.merge(coordinates_lookup, coordinates_transform, how='left', on='FP_HEX')
+# all_coordinates.dropna(inplace=True)
+# all_coordinates['diff_1'] = all_coordinates['TSNE1_x'] - all_coordinates['TSNE1_y']
+# all_coordinates['diff_2'] = all_coordinates['TSNE2_x'] - all_coordinates['TSNE2_y']
+# all_coordinates.drop_duplicates(inplace=True)
+# from matplotlib import pyplot as plt
+# import seaborn as sns
+# sns.scatterplot(data=all_coordinates, x='diff_1', y='diff_2', alpha=0.1)
+# plt.show()
+
+coordinates = coordinates_transform
+
+save_coordinates(coordinates=coordinates,
+                 folder_name=folder_name,
+                 file_name=file_name,
+                 reference_name=reference_data_name)
 annotated_coordinates = load_coordinates(folder_name, file_name, reference_data=reference_data_name) #enviPath coordinates
 
 # visualize on reference space
@@ -114,5 +133,5 @@ figure = plot_chemical_space(annotated_coordinates, nametag='enviPath', map_on=f
                         )
 
 # Save figure
-output_filename = f'{file_name}_on_{reference_data_name}_lookup'
+output_filename = f'{file_name}_on_{reference_data_name}_transform'
 save_figure(figure, output_filename)

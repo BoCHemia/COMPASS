@@ -171,7 +171,7 @@ def main():
                 progress_bar = st.progress(0)
                 status_userdata = st.empty()
 
-                from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints
+                from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints, update_df
 
                 progress_bar.progress(5)
                 
@@ -193,14 +193,13 @@ def main():
                     else:
                         status_userdata.status("ClassyFire information merged; all substances have taxonomy information.")
 
-                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name )
-                
                 progress_bar.progress(20)
                 status_userdata.info("User data was preprocessed and saved in user folder")
 
                 # - fingerprints
                 status_userdata.info("Calculating fingerprints")
-                new_fingerprints = calculate_fingerprints(df_user)
+                new_fingerprints, df_user = calculate_fingerprints(df_user)
+                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name)
                 save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
                 
                 progress_bar.progress(30)

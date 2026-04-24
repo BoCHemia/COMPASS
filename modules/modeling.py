@@ -80,7 +80,7 @@ def fit_tsne_model(df_fingerprints):
     Fits the TSNE model on the boolean fingerprint array (X) and saves the fitted embedding object.
     If the pickled object exists, it is loaded instead of training again.
 
-    :param X: input matrix of fingerprints
+    :param df_fingerprints: fingerprints dataframe
     :return: fitted model object and coordinates of transformed fingerprints
     """
 
@@ -89,13 +89,13 @@ def fit_tsne_model(df_fingerprints):
 
     # Prepare boolean fingerprint array
     df_fingerprints.dropna(inplace=True)
-    X = np.array(df_fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+    X = np.array(df_fingerprints.drop(columns=['FP_HEX']).astype('bool'))
 
     # Training
     print('--> Start training')
     tsne = TSNE(**hyperparameters_dict)
     coordinates = pd.DataFrame(tsne.fit_transform(X), columns=['TSNE1', 'TSNE2'])
-    coordinates.index = df_fingerprints['INCHIKEY']
+    coordinates['FP_HEX'] = df_fingerprints['FP_HEX']
 
     print('Finished training')
     return tsne, coordinates
@@ -158,7 +158,7 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     if user_input_folder:
         input_df_path = os.path.join(user_input_folder, "input_" + file_name + ".csv")
         df = pd.read_csv(input_df_path)
-        df_coordinates = df.merge(coordinates, on='INCHIKEY', how='left')
+        df_coordinates = df.merge(coordinates, on='FP_HEX', how='left')
 
     else:
         print("Could find the coordinates, please check coordinates have already being calculated")
@@ -226,13 +226,13 @@ def transform_target(model, fingerprints, offset, **kwargs):
     # Prepare boolean fingerprint array
     print(f"--> Calculating mapping for {fingerprints.shape[0]} compounds")
     fingerprints.dropna(inplace=True)
-    X = np.array(fingerprints.drop(columns=['INCHIKEY']).astype('bool'))
+    X = np.array(fingerprints.drop(columns=['FP_HEX'])).astype('bool')
     print("Starting to transform")
     coordinates_target = model.transform(X, **kwargs)
     print("Transforming worked")
     coordinates_df = pd.DataFrame(coordinates_target, columns=['TSNE1', 'TSNE2'])
-    coordinates_df.index = fingerprints['INCHIKEY']
     coordinates_df = coordinates_df - offset.values
+    coordinates_df['FP_HEX'] = fingerprints['FP_HEX']
     return coordinates_df
 
 def lookup_target(fingerprints, reference_data):
@@ -245,21 +245,20 @@ def lookup_target(fingerprints, reference_data):
     :return: dataframe with TSNE coordinates for compounds present in the reference data
     """
     fingerprints.dropna(inplace=True)
-    # create a lookup map with
-    lookup_map = reference_data.loc[:,['TSNE1', 'TSNE2']]
-    lookup_map['INCHIKEY_first14'] = reference_data['INCHIKEY'].str.split('-', expand=True)[0]
+    # create a lookup map based on Fingerprints string
+    lookup_map = reference_data.loc[:,['FP_HEX', 'TSNE1', 'TSNE2']]
     print("Lookup map loaded:", lookup_map.shape)
-    lookup_map.drop_duplicates(subset=['INCHIKEY_first14'], inplace=True)
+    lookup_map.drop_duplicates(subset=['FP_HEX'], inplace=True)
 
     # fetch coordinates where available based on first 14 letters inchikey (basic structure)
-    print("Lookup map after removing duplicates based on first14:", lookup_map.shape)
-    fingerprints['INCHIKEY_first14'] = fingerprints['INCHIKEY'].str.split('-', expand=True)[0]
+    print("Lookup map after removing duplicates based FP_HEX:", lookup_map.shape)
 
     # populate coordinates from lookup map first
-    lookup_coordinates_df = fingerprints.loc[:,['INCHIKEY_first14', 'INCHIKEY']]
-    lookup_coordinates_df = lookup_coordinates_df.merge(lookup_map, how='left', on='INCHIKEY_first14')
-    lookup_coordinates_df.index = fingerprints['INCHIKEY']
-    lookup_coordinates_df.drop(columns=['INCHIKEY', 'INCHIKEY_first14'], inplace=True)
+    lookup_coordinates_df = pd.DataFrame()
+    lookup_coordinates_df['FP_HEX'] = fingerprints['FP_HEX']
+    lookup_coordinates_df = lookup_coordinates_df.merge(lookup_map, how='left', on='FP_HEX')
+    lookup_coordinates_df.index = lookup_coordinates_df['FP_HEX']
+    lookup_coordinates_df.drop(columns=['FP_HEX'], inplace=True)
     found_compounds = lookup_coordinates_df.dropna(subset=['TSNE1']).shape[0]
     print(f'{found_compounds} compounds (out of {fingerprints.shape[0]}) could be found in the reference space')
     return lookup_coordinates_df
@@ -282,7 +281,7 @@ def lookup_or_transform_target(model, fingerprints, offset, reference_data):
     print(f'The remaining {remaining_compounds_df.shape[0]} compounds (out of {fingerprints.shape[0]}) need to be transformed')
 
     # get fingerprints for wich TSNE coordinates are missing
-    transform_fingerprints = remaining_compounds_df.merge(fingerprints, how='left', on='INCHIKEY')
+    transform_fingerprints = remaining_compounds_df.merge(fingerprints, how='left', on='FP_HEX')
 
     # transform fingerprints
     transform_coordinates_df =  transform_target(model, transform_fingerprints, offset)
