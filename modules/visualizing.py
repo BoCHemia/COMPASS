@@ -368,6 +368,7 @@ def plot_treemap(df, palette='Alphabet'):
                     )
         
     figure.update_traces(hovertemplate=hovertemplate)
+    figure.update_layout(margin=dict(t=0, l=0, r=0, b=0))
 
     return figure
 
