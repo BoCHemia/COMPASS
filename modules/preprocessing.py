@@ -517,12 +517,12 @@ def get_demo_assets_root(zip_url: str, expected_md5: str | None = None) -> str:
     # Verify checksum (recommended)
     if expected_md5:
         actual = _md5_file(zip_path)
+        print(actual)
         if actual.lower() != expected_md5.lower():
             # If corrupted/partial download, delete and fail loudly
             zip_path.unlink(missing_ok=True)
             marker.unlink(missing_ok=True)
-            print(f"MD5 mismatch for demo_assets.zip: expected {expected_md5}, got {actual}")
-            # raise RuntimeError(f"MD5 mismatch for demo_assets.zip: expected {expected_md5}, got {actual}")
+            raise RuntimeError(f"MD5 mismatch for demo_assets.zip: expected {expected_md5}, got {actual}")
 
     # Extract if needed
     if not marker.exists() or not extract_root.exists():
