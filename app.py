@@ -442,10 +442,9 @@ def main():
                     hue_target = None  # reset target coloring
                 else:
                     if target_space == 'my_own_substances':
-                        drop_list = ['PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',
-                                     'CASRN', 'IUPAC', 'InChI']
-                        hue_options_target = [None] + [c for c in list(target_coordinates.columns) if
-                                                       c not in drop_list]
+                        drop_list = ['ID', 'CASRN', 'PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',
+                                     'FP_HEX', 'IUPAC', 'InChI']
+                        hue_options_target = [None] + [c for c in list(target_coordinates.columns) if c not in drop_list]
                     else:
                         hue_options_target = [None] + list(
                             set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
@@ -467,7 +466,7 @@ def main():
 
                     similarity_ref = knn_sim_ref.iloc[:, :similarity_k].mean(axis=1)
                     similarity_target = knn_sim_self.iloc[:, 1:similarity_k + 1].mean(axis=1)
-                    default = similarity_target.mean() - similarity_target.std()
+                    default = similarity_target.mean() - 0.5*similarity_target.std() # Tetko
 
                     if similarity_threshold is None:
                         threshold = None
