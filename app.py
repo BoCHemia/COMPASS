@@ -455,33 +455,33 @@ def main():
 
                 # similarity settings
                 if include_similarity:  # hue_ref=='Similarity' or hue_target=='Similarity':
+                    if not IS_DEMO:
+                        similarity_k = cols[0].number_input("Number of nearest neighbors for similarity", min_value=1,
+                                                            max_value=max_k, value=5)
+                        similarity_threshold = cols[1].selectbox("Similarity threshold", [None, 'default', 'custom'],
+                                                                index=0,
+                                                                help="default = mean similarity of target chemicals to their k nearest neighbors within the target set.")
 
-                    similarity_k = cols[0].number_input("Number of nearest neighbors for similarity", min_value=1,
-                                                        max_value=max_k, value=5)
-                    similarity_threshold = cols[1].selectbox("Similarity threshold", [None, 'default', 'custom'],
-                                                             index=0,
-                                                             help="default = mean similarity of target chemicals to their k nearest neighbors within the target set.")
+                        similarity_ref = knn_sim_ref.iloc[:, :similarity_k].mean(axis=1)
+                        similarity_target = knn_sim_self.iloc[:, 1:similarity_k + 1].mean(axis=1)
+                        default = similarity_target.mean() - 0.5*similarity_target.std() # Tetko
 
-                    similarity_ref = knn_sim_ref.iloc[:, :similarity_k].mean(axis=1)
-                    similarity_target = knn_sim_self.iloc[:, 1:similarity_k + 1].mean(axis=1)
-                    default = similarity_target.mean() - 0.5*similarity_target.std() # Tetko
+                        if similarity_threshold is None:
+                            threshold = None
+                            reference_coordinates['Similarity'] = similarity_ref
+                            target_coordinates['Similarity'] = similarity_target
 
-                    if similarity_threshold is None:
-                        threshold = None
-                        reference_coordinates['Similarity'] = similarity_ref
-                        target_coordinates['Similarity'] = similarity_target
+                        else:
+                            if similarity_threshold == 'default':
+                                threshold = default
 
-                    else:
-                        if similarity_threshold == 'default':
-                            threshold = default
+                            elif similarity_threshold == 'custom':
+                                
+                                threshold = cols[1].slider("Similarity threshold", min_value=0.0, max_value=1.0,
+                                                        value=default)
 
-                        elif similarity_threshold == 'custom':
-                            
-                            threshold = cols[1].slider("Similarity threshold", min_value=0.0, max_value=1.0,
-                                                       value=default)
-
-                        reference_coordinates['Similarity'] = (similarity_ref >= threshold)
-                        target_coordinates['Similarity'] = (similarity_target >= threshold)
+                            reference_coordinates['Similarity'] = (similarity_ref >= threshold)
+                            target_coordinates['Similarity'] = (similarity_target >= threshold)
 
             binary_color_map = {True: '#1f77b4', False: "#E9AAAA"}
 
