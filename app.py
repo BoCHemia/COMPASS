@@ -1,4 +1,3 @@
-# import resource
 import streamlit as st
 import pandas as pd
 import time
@@ -443,10 +442,9 @@ def main():
                     hue_target = None  # reset target coloring
                 else:
                     if target_space == 'my_own_substances':
-                        drop_list = ['PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',
-                                     'CASRN', 'IUPAC', 'InChI']
-                        hue_options_target = [None] + [c for c in list(target_coordinates.columns) if
-                                                       c not in drop_list]
+                        drop_list = ['ID', 'CASRN', 'PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',
+                                     'FP_HEX', 'IUPAC', 'InChI']
+                        hue_options_target = [None] + [c for c in list(target_coordinates.columns) if c not in drop_list]
                     else:
                         hue_options_target = [None] + list(
                             set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
@@ -468,6 +466,7 @@ def main():
 
                     similarity_ref = knn_sim_ref.iloc[:, :similarity_k].mean(axis=1)
                     similarity_target = knn_sim_self.iloc[:, 1:similarity_k + 1].mean(axis=1)
+                    default = similarity_target.mean() - 0.5*similarity_target.std() # Tetko
 
                     if similarity_threshold is None:
                         threshold = None
@@ -476,10 +475,10 @@ def main():
 
                     else:
                         if similarity_threshold == 'default':
-                            threshold = knn_sim_self.iloc[:, 1:similarity_k].mean(axis=1).mean()
+                            threshold = default
 
                         elif similarity_threshold == 'custom':
-                            default = knn_sim_self.iloc[:, 1:similarity_k].mean(axis=1).mean()
+                            
                             threshold = cols[1].slider("Similarity threshold", min_value=0.0, max_value=1.0,
                                                        value=default)
 
@@ -540,6 +539,11 @@ def main():
 
             selected = st.plotly_chart(figure_1, on_select='rerun')
 
+            # figure_1.update_traces(
+            #     selected=dict(marker=dict(opacity=1)),
+            #     unselected=dict(marker=dict(opacity=1))
+            # )
+
         with col_info:
             if show:
                 st.subheader("Selected molecule")
@@ -592,39 +596,83 @@ def main():
                         with st.container(border=True):
                             st.plotly_chart(figure_3, use_container_width=True)
 
-                        st.markdown("### Properties")
-                        st.write(f"**Data origin:** {origin}")
-                        st.write(f"**Name:** {row['PREFERRED_NAME']}")
-                        st.write(f"**SMILES:** {row['SMILES']}")
-                        st.write(f"**InChIKey:** {row['INCHIKEY']}")
-
-
-                else:
-                    st.info("Select a molecule from the plot.")
-
 
     with st.container(border=True):
         fragment_plot_chemical_space()
 
 
         ###### Plot 2: Treemap #####
+    # @st.fragment
+    # def fragment_plot_treemap():
+    #     cols = st.columns(2)
+    #     dataset_for_treemap = cols[0].selectbox("Choose a dataset for the treemap", ["Reference", "Target"], index=0)
+    #     df_treemap = reference_coordinates if dataset_for_treemap == "Reference" else target_coordinates
+
+    #     required = {"Superclass", "Class", "Subclass"}
+    #     if required.issubset(df_treemap.columns):
+    #         figure = plot_treemap(df_treemap)
+    #         st.plotly_chart(figure, use_container_width=True)
+    #     else:
+    #         st.info("Treemap can only be generated for datasets containing ClassyFire taxonomy (Superclass, Class, Subclass).")
+
+    # with st.container(border=True):
+    #     fragment_plot_treemap()
+
     @st.fragment
     def fragment_plot_treemap():
-        cols = st.columns(2)
-        dataset_for_treemap = cols[0].selectbox("Choose a dataset for the treemap", ["Reference", "Target"], index=0)
-        df_treemap = reference_coordinates if dataset_for_treemap == "Reference" else target_coordinates
-
+        #st.subheader("ClassyFire Taxonomy distribution")
         required = {"Superclass", "Class", "Subclass"}
-        if required.issubset(df_treemap.columns):
-            figure = plot_treemap(df_treemap)
-            st.plotly_chart(figure, use_container_width=True)
+
+        # --- Reference ---
+        if required.issubset(reference_coordinates.columns):
+            
+            #st.caption(reference_folder_name + ' reference space') - this creates a larger gap so using markdown instead
+            st.markdown(f"""
+                        <p style="
+                            margin-bottom:0px;
+                            margin-top:0px;
+                            font-size:0.8rem;
+                            color:black;
+                        ">
+                        {reference_folder_name} reference space
+                        </p>
+                        """,
+                        unsafe_allow_html=True)
+            
+            fig_reference = plot_treemap(reference_coordinates)
+            st.plotly_chart(fig_reference, use_container_width=True)
         else:
-            st.info("Treemap can only be generated for datasets containing ClassyFire taxonomy (Superclass, Class, Subclass).")
+            st.info(
+                "Reference dataset does not contain required "
+                "ClassyFire taxonomy columns."
+            )
+
+        # --- Target ---
+        if required.issubset(target_coordinates.columns):
+            #st.caption(target_folder_name + ' target space') - this creates a larger gap so using markdown instead
+            st.markdown(f"""
+                        <p style="
+                            margin-bottom:0px;
+                            margin-top:0px;
+                            font-size:0.8rem;
+                            color:black;
+                        ">
+                        {target_folder_name} target space
+                        </p>
+                        """,
+                        unsafe_allow_html=True)
+            
+            fig_target = plot_treemap(target_coordinates)
+            st.plotly_chart(fig_target, use_container_width=True)
+        else:
+            st.info(
+                "Target dataset does not contain required "
+                "ClassyFire taxonomy columns."
+            )
 
     with st.container(border=True):
         fragment_plot_treemap()
-
-
+        
 if __name__ == '__main__':
     main()
     print('app is running')
