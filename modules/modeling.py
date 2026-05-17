@@ -190,7 +190,7 @@ def load_coordinates(folder_name, file_name, reference_data="", base_dir="data")
     if reference_data:
         file_name += f'_on_{reference_data}'
     coordinates_path = os.path.join(PROJECT_ROOT, base_dir, folder_name, "output_" + file_name + '.csv')
-    coordinates = pd.read_csv(coordinates_path, usecols=minimal_columns)
+    coordinates = pd.read_csv(coordinates_path) #, usecols=minimal_columns)
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 

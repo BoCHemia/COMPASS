@@ -276,17 +276,17 @@ def main():
                 progress_bar.progress(20)
                 status_userdata.info("User data was preprocessed and saved in user folder")
 
-                # - fingerprints
-                status_userdata.info("Calculating fingerprints")
-                new_fingerprints, df_user = calculate_fingerprints(df_user)
-                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name)
-                save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
-                
-                progress_bar.progress(30)
-                status_userdata.info("Fingerprints have been calculated and saved")
-                
-                # load tSNE model object
-                status_userdata.info("Loading trained reference model; this takes 1-3 mins")
+            # - fingerprints
+            status_userdata.info("Calculating fingerprints")
+            new_fingerprints, df_user = calculate_fingerprints(df_user)
+            save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name)
+            save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
+            
+            progress_bar.progress(30)
+            status_userdata.info("Fingerprints have been calculated and saved")
+            
+            # load tSNE model object
+            status_userdata.info("Loading trained reference model; this takes 1-3 mins")
 
             from modules.modeling import (load_model, load_model_offset, transform_target, save_coordinates)
             st.cache_resource(scope="session", show_spinner=True)(load_model)  # Cache the model loading to prevent reloading on every rerun; scope=session ensures it's loaded once per user session
@@ -337,8 +337,6 @@ def main():
 
         time.sleep(3)
         project_progress_bar.progress(10)
-
-
 
         ###### Load selected datasets #####
         @st.cache_data
@@ -449,7 +447,7 @@ def main():
                         hue_options_target = [None] + list(
                             set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
 
-                    if include_similarity:
+                    if (not 'user' in target_file_name) and include_similarity:
                         hue_options_target += ['Similarity']
 
                     hue_target = cols[1].selectbox("Color target by", hue_options_target, index=0)
