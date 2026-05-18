@@ -24,6 +24,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgomp1 \
+    libxrender1 \
+    libxext6 \
+    libsm6 \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies (with pip cache + requirements bind-mount)

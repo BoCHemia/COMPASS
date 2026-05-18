@@ -1,12 +1,12 @@
-# import resource
 import streamlit as st
 import pandas as pd
 import time
 import os
-import plotly.express as px
+from rdkit import Chem
+from rdkit.Chem import Draw
 
-from modules.modeling import load_coordinates
-from modules.visualizing import plot_chemical_space, plot_treemap
+from modules.modeling import extract_knn_results, load_coordinates
+from modules.visualizing import detect_color_type, plot_chemical_space, plot_similarity_histograms, plot_similarity_threshold_pie, plot_treemap
 from modules.preprocessing import get_demo_assets_root
 
 def main():
@@ -22,33 +22,32 @@ def main():
 
     # # # ----------- RESOURCE LIMITS -----------
     minimal_columns = ['SMILES', 'INCHIKEY', 'IUPAC', 'PREFERRED_NAME',
-       'TSNE1', 'TSNE2', 'Kingdom', 'Superclass',
-       'Class', 'Subclass']
+                       'TSNE1', 'TSNE2', 'Kingdom', 'Superclass','Class', 'Subclass']
 
-    # ----------- APP MODE LOGIC (currently 'demo' or 'full') ----------- 
+    # ----------- APP MODE LOGIC (currently 'demo' or 'full') -----------
     # ---------------- The test_demo mode is only for testing the demo assets locally without downloading from Zenodo each time, and should not be exposed to users in the app; this is just for development purposes ----------------
-    MODE = os.getenv("COMPASS_MODE", "demo").strip().lower() 
+    MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
     print(MODE)  # "demo" or "full"
-    
+
     IS_DEMO = MODE == "demo"
-    
+
     # if IS_DEMO:
     if MODE == "demo":
-        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/18723920/files/demo_assets.zip")
-        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "16b0ecfa753c9f19ac6da2fad391024c")
-
+        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/20266750/files/demo_assets.zip")
+        # DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/18723920/files/demo_assets.zip")
+        # DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "16b0ecfa753c9f19ac6da2fad391024c")
+        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "6ede94de0317fd5a7ecfe071bee8c47d")
+ 
         ASSET_ROOT = get_demo_assets_root(DEMO_ZIP_URL, expected_md5=DEMO_ZIP_MD5)
     elif MODE == "test_demo":
         ASSET_ROOT = "demo_assets"  # for testing the demo assets locally without downloading from Zenodo each time
-    
+
     else:
-        ASSET_ROOT = "data"    
+        ASSET_ROOT = "data"
 
 
 
-
-
-    # ----------- CONFIGURATION SIDEBAR ----------- 
+    # ----------- CONFIGURATION SIDEBAR -----------
     # Streamlit app title
     st.sidebar.title("🧭 COMPASS") # could be replaced with an image logo later 
     #st.sidebar.markdown("# COMPASS\n") 
@@ -60,7 +59,7 @@ def main():
                         you can locate and explore chemical data sets in relation to known chemical landscapes.
                         You can provide your own data set or select from pre-defined target spaces.
                 """)
-    
+
     darkmode = st.sidebar.checkbox("dark mode")
 
     # Step 1: Select reference space
@@ -132,7 +131,7 @@ def main():
             st.sidebar.warning("Uploading your own dataset is only available using the full version." \
             "The full versions is distributed using Docker and can be run locally on your machine;" \
             "please follow this [link](https://github.com/BoCHemia/global-chemical-space/tree/develop) and refer to the README for instructions. ")
-            
+
             st.stop()
 
         user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
@@ -166,6 +165,14 @@ def main():
             st.info("Please upload a CSV file to proceed.")
             st.stop()
 
+    # Step 2.5: Select similarity settings (optional)
+    include_similarity = st.sidebar.checkbox("include similarity calculation")
+
+    if IS_DEMO & include_similarity:
+            st.sidebar.warning("Uploading similarity calculations are currently not available in the demo version." \
+            "The full version is distributed using Docker and can be run locally on your machine;" \
+            "please follow this [link](https://github.com/BoCHemia/global-chemical-space/tree/develop) and refer to the README for instructions. ")
+
 
     # Step 3: Activate mapping --  Can we make the form/button more beautiful?
     with st.sidebar.form("config_form", clear_on_submit=False, border=False): 
@@ -195,7 +202,7 @@ def main():
         if target_space == "my_own_substances" and user_target_chemicals is None:
             missing.append("CSV file with target chemicals")
 
-        # Check that something is missing. 
+        # Check that something is missing.
         if missing:
             st.warning("Please provide: " + ", ".join(missing))
             st.stop()
@@ -216,44 +223,44 @@ def main():
                 st.stop()
 
         st.sidebar.info("You have selected to map {} into {}".format(target_space, reference_space)) 
-        
+
         # todo: not sure if this should be here
         # st.cache_resource.clear()  # Clear cached model to prevent memory issues;
         # one problem is that it would clear the cached csv too so consider more targeted cache clearing in the future
 
+
     
-    
-    
+
     # ----------- END OF CONFIGURATION, START OF APP -----------
 
-    # ----------- DATA LOADING AND TRANSFORMATION SECTION ----------- 
+    # ----------- DATA LOADING AND TRANSFORMATION SECTION -----------
     # - Transform user data and calculate coordinates (if needed)
 
     # ----------- Full app feature ------------ #todo
-    # import Capabilities 
+    # import Capabilities
     # APP_MODE = os.getenv("COMPASS_MODE", "demo") # 'demo' or 'full_app'
     # caps = Capabilities.from_mode(APP_MODE)
     # This capabilities thing can be used for an intermediate solution
-    # For example "lightweight" app hosted by EAWAG with some of the smaller reference spaces. PFAS? 
+    # For example "lightweight" app hosted by EAWAG with some of the smaller reference spaces. PFAS?
 
 
     if (not IS_DEMO) and (target_space == 'my_own_substances'):
         with st.spinner("Calculating the chemical space mapping; this may take several minutes", show_time=True):
             time.sleep(1)
-            
+
             progress_bar = st.progress(0)
             status_userdata = st.empty()
 
-            from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints
+            from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints, update_df
 
             progress_bar.progress(5)
-            
+
             # - preprocessing
             status_userdata.info("Preprocessing user data")
             df_user = standardize_structures(df_user)
 
             progress_bar.progress(15)
-            
+
             required = {"Superclass", "Class", "Subclass"}
             if not required.issubset(df_user.columns):
                 status_userdata.info("No ClassyFire information provided; complementing with available ClassyFire data.")
@@ -266,14 +273,15 @@ def main():
                 else:
                     status_userdata.status("ClassyFire information merged; all substances have taxonomy information.")
 
-            save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name )
-            
-            progress_bar.progress(20)
-            status_userdata.info("User data was preprocessed and saved in user folder")
+                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name )
+                
+                progress_bar.progress(20)
+                status_userdata.info("User data was preprocessed and saved in user folder")
 
             # - fingerprints
             status_userdata.info("Calculating fingerprints")
-            new_fingerprints = calculate_fingerprints(df_user)
+            new_fingerprints, df_user = calculate_fingerprints(df_user)
+            save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name)
             save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
             
             progress_bar.progress(30)
@@ -286,28 +294,28 @@ def main():
             st.cache_resource(scope="session", show_spinner=True)(load_model)  # Cache the model loading to prevent reloading on every rerun; scope=session ensures it's loaded once per user session
             model = load_model(reference_file_name, use_joblib=True)
 
-            st.cache_resource(scope="session", show_spinner=False)(load_model_offset) 
-            offset = load_model_offset(reference_file_name) 
-            
+            st.cache_resource(scope="session", show_spinner=False)(load_model_offset)
+            offset = load_model_offset(reference_file_name)
+
             status_userdata.info("Loading model complete")
             progress_bar.progress(75)
 
             # transform
             status_userdata.info("Calculating coordinates for user target chemicals mapped into selected reference space")
-            target_coordinates = transform_target(model, new_fingerprints, offset) 
+            target_coordinates = transform_target(model, new_fingerprints, offset)
 
             progress_bar.progress(95)
             status_userdata.info("Calculation complete...saving coordinates.")
             save_coordinates(coordinates=target_coordinates,
                                 folder_name=target_folder_name,
                                 file_name=target_file_name,
-                                reference_name=reference_file_name)       
+                                reference_name=reference_file_name)
             progress_bar.progress(100)
 
             # - empty progress bars and status after a short delay
             time.sleep(1)
             progress_bar.empty()
-            status_userdata.empty()     
+            status_userdata.empty()
 
 
 
@@ -321,7 +329,7 @@ def main():
 
 
     with st.spinner("Projecting your substances of interest", show_time=True):
-        # ###### Check that target coordiantes exist ##### #todo 
+        # ###### Check that target coordiantes exist ##### #todo
         # ###### This should work with user coordinates as well, but needs to be tested
         # target_coordinates_file = os.path.join(target_folder_name, f"{target_file_name}_coordinates.csv")
         # if not os.path.exists(target_coordinates_file):
@@ -332,8 +340,6 @@ def main():
         time.sleep(3)
         project_progress_bar.progress(10)
 
-        
-        
         ###### Load selected datasets #####
         @st.cache_data
         def load_coordinates_to_cache(folder_name, file_name, reference_data=""):
@@ -360,8 +366,30 @@ def main():
         if target_space:
             target_coordinates = load_coordinates_to_cache(target_folder_name, target_file_name, reference_data=reference_file_name)
             status.info("Loading target coordinates complete")
-            project_progress_bar.progress(70)
-        
+            project_progress_bar.progress(60)
+
+        # Similarity calculation
+        if include_similarity:
+            if not IS_DEMO:
+                status.info("Calculating similarity between target and reference chemicals")
+                from modules.modeling import create_fpsim2_engine, compute_similarity_fpsim2, extract_knn_results
+
+                max_k = 10  # maximum number of neighbors we want to allow based on calculation speed - should check what is feasible
+
+                # Reference to Target
+                engine, valid_idx = create_fpsim2_engine(target_coordinates, file_name=os.path.join("/tmp", f"fp_{target_file_name}"), smiles_col="SMILES")
+                knn_result_ref, valid_idx_ref = compute_similarity_fpsim2(engine, reference_coordinates, smiles_col='SMILES', k=max_k)
+                knn_sim_ref, knn_idx_ref = extract_knn_results(knn_result_ref, valid_idx_ref, max_k)
+                project_progress_bar.progress(80)
+
+                # Target (self-similarity)
+                knn_result_self, valid_idx_self= compute_similarity_fpsim2(engine, target_coordinates, smiles_col='SMILES', k=max_k+1)
+                knn_sim_self, knn_idx_self= extract_knn_results(knn_result_self, valid_idx_self, max_k+1)
+                project_progress_bar.progress(90)
+            else:
+                pass
+                # load pre-calculated similarity for demo ???
+
         project_progress_bar.progress(100)
         status.success("Done!!!")
 
@@ -370,7 +398,7 @@ def main():
         project_progress_bar.empty()
         status.empty()
 
-   # ----------- END DATA LOADING AND TRANSFORMATION SECTION ----------- 
+   # ----------- END DATA LOADING AND TRANSFORMATION SECTION -----------
 
 
     ### ----------- VISUALIZATION SECTION -----------  ###
@@ -378,105 +406,274 @@ def main():
     @st.fragment
     def fragment_plot_chemical_space():    # defining a fragment functions ensure that Streamlit only reruns this part when selecting hue column
         # - Color settings
-        with st.container(border=False):
+        show = st.toggle("Visualize selected molecule")
+        col_plot, col_info = st.columns([3, 1 if show else 0.01])
+        with col_plot:
+            with st.container(border=False):
 
-            def allowed_hue_columns(file_name):
-                classyfire = ['Kingdom', 'Superclass', 'Class', 'Subclass']
-                if 'zeropm' in file_name:
-                    hue_columns = classyfire
-                elif 'zhang' in file_name:
-                    hue_columns = classyfire + ['Chemical class', 'Primary target class', 'Mode of action', 'Mode of action group']
+                def allowed_hue_columns(file_name):
+                    classyfire = ['Kingdom', 'Superclass', 'Class', 'Subclass']
+                    if 'zeropm' in file_name:
+                        hue_columns = classyfire
+                    elif 'zhang' in file_name:
+                        hue_columns = classyfire + ['Chemical class', 'Primary target class', 'Mode of action',
+                                                    'Mode of action group']
+                    else:
+                        hue_columns = classyfire
+
+                    return hue_columns
+
+                cols = st.columns(2)
+                if target_space:
+                    dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring",
+                                                         ["Reference", "Target", "None"], index=2)
                 else:
-                    hue_columns = classyfire
+                    dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference"],
+                                                         index=0)
 
-                return hue_columns
+                if dataset_to_color == "Reference":
+                    hue_options_ref = [None] + list(
+                        set(reference_coordinates.columns) & set(allowed_hue_columns(reference_file_name)))
 
-            cols = st.columns(2)
-            if target_space:
-                dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference", "Target", "None"], index=2)
-            else:
-                dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference"], index=0)
+                    if include_similarity:
+                        hue_options_ref += ['Similarity']
 
-            if dataset_to_color == "Reference":
-                hue_options_ref = [None] + list(set(reference_coordinates.columns) & set(allowed_hue_columns(reference_file_name)))
-                hue_ref = cols[1].selectbox("Color reference by", hue_options_ref, index=0)
-                hue_target = None  # reset target coloring
-            else:
-                if target_space == 'my_own_substances':
-                    drop_list = ['PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',  'CASRN', 'IUPAC', 'InChI']
-                    hue_options_target = [None] +  [c for c in list(target_coordinates.columns) if c not in drop_list]
+                    hue_ref = cols[1].selectbox("Color reference by", hue_options_ref, index=0)
+                    hue_target = None  # reset target coloring
                 else:
-                    hue_options_target =  [None] + list(set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
-                hue_target = cols[1].selectbox("Color target by", hue_options_target, index=0)
-                hue_ref = None  # reset reference coloring
+                    if target_space == 'my_own_substances':
+                        drop_list = ['ID', 'CASRN', 'PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',
+                                     'FP_HEX', 'IUPAC', 'InChI']
+                        hue_options_target = [None] + [c for c in list(target_coordinates.columns) if c not in drop_list]
+                    else:
+                        hue_options_target = [None] + list(
+                            set(target_coordinates.columns) & set(allowed_hue_columns(target_file_name)))
 
-        # - reference set
-        hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
-        hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
+                    if (not 'user' in target_file_name) and include_similarity:
+                        hue_options_target += ['Similarity']
 
-        if hue_ref:
-            color_type_ref =  'continuous' if pd.api.types.is_numeric_dtype(reference_coordinates[hue_ref]) else 'discrete'
-            palette_ref = 'Alphabet' if color_type_ref == 'discrete' else 'Turbo'
+                    hue_target = cols[1].selectbox("Color target by", hue_options_target, index=0)
+                    hue_ref = None  # reset reference coloring
 
-            figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space', 
-                                        hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
-                                        column_for_color_map=hue_ref, color_type=color_type_ref, palette=palette_ref)
-        else:
-            color = 'lightgrey'
-            if darkmode:
-                color = 'dimgrey'
-            figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space', 
-                                        hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available, color=color)
-        
-        # - target set
-        if target_space: 
-            hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
-            hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
+                # similarity settings
+                if include_similarity and not IS_DEMO:  # hue_ref=='Similarity' or hue_target=='Similarity':
+                    similarity_k = cols[0].number_input("Number of nearest neighbors for similarity", min_value=1,
+                                                        max_value=max_k, value=5)
+                    similarity_threshold = cols[1].selectbox("Similarity threshold", [None, 'default', 'custom'],
+                                                            index=0,
+                                                            help="default = mean similarity of target chemicals to their k nearest neighbors within the target set.")
 
-            if hue_target:
+                    similarity_ref = knn_sim_ref.iloc[:, :similarity_k].mean(axis=1)
+                    similarity_target = knn_sim_self.iloc[:, 1:similarity_k + 1].mean(axis=1)
+                    default = similarity_target.mean() - 0.5*similarity_target.std() # Tetko
 
-                color_type_target =  'continuous' if pd.api.types.is_numeric_dtype(target_coordinates[hue_target]) else 'discrete'
-                palette_target = 'Alphabet' if color_type_target == 'discrete' else 'Turbo'
+                    if similarity_threshold is None:
+                        threshold = None
+                        reference_coordinates['Similarity'] = similarity_ref
+                        target_coordinates['Similarity'] = similarity_target
 
-                figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
-                                            hover_name='PREFERRED_NAME', hover_data=hover_data_available,
-                                            column_for_color_map=hue_target, color_type=color_type_target, palette=palette_target,
-                                            symbol='diamond', size=3, opacity=0.5)
+                    else:
+                        if similarity_threshold == 'default':
+                            threshold = default
+
+                        elif similarity_threshold == 'custom':
+                            
+                            threshold = cols[1].slider("Similarity threshold", min_value=0.0, max_value=1.0,
+                                                    value=default)
+
+                        reference_coordinates['Similarity'] = (similarity_ref >= threshold)
+                        target_coordinates['Similarity'] = (similarity_target >= threshold)
+
+            binary_color_map = {True: '#1f77b4', False: "#E9AAAA"}
+
+            # - reference set
+            hover_data_ref_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
+            hover_data_ref_available = [c for c in hover_data_ref_preferred if c in reference_coordinates.columns]
+
+            if hue_ref:
+                color_type_ref = detect_color_type(reference_coordinates[hue_ref])
+                palette_ref = ('Alphabet' if color_type_ref == 'discrete'
+                               else binary_color_map if color_type_ref == 'binary'
+                else 'Spectral')
+
+                figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space',
+                                             hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
+                                             column_for_color_map=hue_ref, color_type=color_type_ref,
+                                             palette=palette_ref)
             else:
-                color = 'black'
+                color = 'lightgrey'
                 if darkmode:
-                    color = 'white'
-                figure = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space', map_on=figure,
-                                            hover_name='PREFERRED_NAME', hover_data=hover_data_available, color='black', 
-                                            symbol='diamond', size=3, opacity=0.7)
-        
-        st.plotly_chart(figure, use_container_width=True)
+                    color = 'dimgrey'
+                figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space',
+                                             hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
+                                             color=color)
+
+            # - target set
+            if target_space:
+                hover_data_preferred = ['Superclass', 'Class', 'Subclass', 'CASRN']
+                hover_data_available = [c for c in hover_data_preferred if c in target_coordinates.columns]
+
+                if hue_target:
+
+                    color_type_target = detect_color_type(target_coordinates[hue_target])
+                    palette_target = ('Alphabet' if color_type_target == 'discrete'
+                                      else binary_color_map if color_type_target == 'binary'
+                    else 'Spectral')
+
+                    figure_1 = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space',
+                                                   map_on=figure,
+                                                   hover_name='PREFERRED_NAME', hover_data=hover_data_available,
+                                                   column_for_color_map=hue_target, color_type=color_type_target,
+                                                   palette=palette_target,
+                                                   symbol='diamond', size=3, opacity=0.5)
+                else:
+                    color = 'black'
+                    if darkmode:
+                        color = 'white'
+                    figure_1 = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space',
+                                                   map_on=figure,
+                                                   hover_name='PREFERRED_NAME', hover_data=hover_data_available,
+                                                   color=color,
+                                                   symbol='diamond', size=3, opacity=0.7)
+
+            selected = st.plotly_chart(figure_1, on_select='rerun')
+
+            # figure_1.update_traces(
+            #     selected=dict(marker=dict(opacity=1)),
+            #     unselected=dict(marker=dict(opacity=1))
+            # )
+
+        with col_info:
+            if show:
+                st.subheader("Selected molecule")
+                if selected:
+                    selected_datapoint = selected["selection"]["points"]
+                    if selected_datapoint:
+                        # st.markdown(selected_datapoint[0])
+                        idx = selected_datapoint[0]["point_index"]
+                        origin = selected_datapoint[0]["customdata"][-1] # data origin to be found
+                        if 'reference space' in origin:
+                            row = reference_coordinates.iloc[idx]
+                        elif 'target space' in origin:
+                            row = target_coordinates.iloc[idx]
+                        else:
+                            st.markdown(f"No data found for {origin}")
+
+                        mol = Chem.MolFromSmiles(row["SMILES"])
+                        st.image(Draw.MolToImage(mol, size=(300, 300)))
+
+                        st.markdown("### Properties")
+                        st.write(f"**Data origin:** {origin}")
+                        st.write(f"**Name:** {row['PREFERRED_NAME']}")
+                        st.write(f"**SMILES:** {row['SMILES']}")
+                        st.write(f"**InChIKey:** {row['INCHIKEY']}")
+
+
+                else:
+                    st.info("Select a molecule from the plot.")
+
+        # Add similarity plots if similarity is included
+        if include_similarity and not IS_DEMO:
+            col1, col2 = st.columns(2)  # create two columns
+
+            with col1:
+                figure_2 = plot_similarity_histograms(similarity_ref, similarity_target, threshold=threshold)
+                with st.container(border=True):
+                    st.plotly_chart(figure_2, use_container_width=True)
+
+            with col2:
+                if threshold is not None:
+                    figure_3 = None
+                    if dataset_to_color == 'Reference':
+                        figure_3 = plot_similarity_threshold_pie(similarity_ref, set_name='Reference',
+                                                                 threshold=threshold)
+                    elif dataset_to_color == 'Target':
+                        figure_3 = plot_similarity_threshold_pie(similarity_target, set_name='Target',
+                                                                 threshold=threshold)
+
+                    if figure_3 is not None:
+                        with st.container(border=True):
+                            st.plotly_chart(figure_3, use_container_width=True)
 
 
     with st.container(border=True):
         fragment_plot_chemical_space()
-        
 
-    ###### Plot 2: Treemap #####
+
+        ###### Plot 2: Treemap #####
+    # @st.fragment
+    # def fragment_plot_treemap():
+    #     cols = st.columns(2)
+    #     dataset_for_treemap = cols[0].selectbox("Choose a dataset for the treemap", ["Reference", "Target"], index=0)
+    #     df_treemap = reference_coordinates if dataset_for_treemap == "Reference" else target_coordinates
+
+    #     required = {"Superclass", "Class", "Subclass"}
+    #     if required.issubset(df_treemap.columns):
+    #         figure = plot_treemap(df_treemap)
+    #         st.plotly_chart(figure, use_container_width=True)
+    #     else:
+    #         st.info("Treemap can only be generated for datasets containing ClassyFire taxonomy (Superclass, Class, Subclass).")
+
+    # with st.container(border=True):
+    #     fragment_plot_treemap()
+
     @st.fragment
     def fragment_plot_treemap():
-        cols = st.columns(2)
-        dataset_for_treemap = cols[0].selectbox("Choose a dataset for the treemap", ["Reference", "Target"], index=0)
-        df_treemap = reference_coordinates if dataset_for_treemap == "Reference" else target_coordinates
-        
+        #st.subheader("ClassyFire Taxonomy distribution")
         required = {"Superclass", "Class", "Subclass"}
-        if required.issubset(df_treemap.columns):
-            figure = plot_treemap(df_treemap)
-            st.plotly_chart(figure, use_container_width=True)
+
+        # --- Reference ---
+        if required.issubset(reference_coordinates.columns):
+            
+            #st.caption(reference_folder_name + ' reference space') - this creates a larger gap so using markdown instead
+            st.markdown(f"""
+                        <p style="
+                            margin-bottom:0px;
+                            margin-top:0px;
+                            font-size:0.8rem;
+                            color:black;
+                        ">
+                        {reference_folder_name} reference space
+                        </p>
+                        """,
+                        unsafe_allow_html=True)
+            
+            fig_reference = plot_treemap(reference_coordinates)
+            st.plotly_chart(fig_reference, use_container_width=True)
         else:
-            st.info("Treemap can only be generated for datasets containing ClassyFire taxonomy (Superclass, Class, Subclass).")
-        
+            st.info(
+                "Reference dataset does not contain required "
+                "ClassyFire taxonomy columns."
+            )
+
+        # --- Target ---
+        if required.issubset(target_coordinates.columns):
+            #st.caption(target_folder_name + ' target space') - this creates a larger gap so using markdown instead
+            st.markdown(f"""
+                        <p style="
+                            margin-bottom:0px;
+                            margin-top:0px;
+                            font-size:0.8rem;
+                            color:black;
+                        ">
+                        {target_folder_name} target space
+                        </p>
+                        """,
+                        unsafe_allow_html=True)
+            
+            fig_target = plot_treemap(target_coordinates)
+            st.plotly_chart(fig_target, use_container_width=True)
+        else:
+            st.info(
+                "Target dataset does not contain required "
+                "ClassyFire taxonomy columns."
+            )
+
     with st.container(border=True):
         fragment_plot_treemap()
         
-
 if __name__ == '__main__':
     main()
     print('app is running')
     #todo: clear the user folder after the app is closed? or after a certain time period? to prevent storage issues when hosting in EAWAG
-    # todo: The user also should know that if they install the app locally, the data will be stored on their computer in the /data/_USER folder, and they can delete it whenever they want
+    # todo: The u should know that if they install the app locally, the data will be stored on their computer in the /data/_USER folder, and they can delete it whenever they want

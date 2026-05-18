@@ -23,7 +23,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 def prepare_classyfire_data():
     input_path = os.path.join(PROJECT_ROOT, "data")
     classyfire_raw = pd.read_csv(os.path.join(input_path, "ClassyFire", "raw_classyfire.csv"))
-    classyfire = classyfire_raw.drop_duplicates()
+    classyfire = classyfire_raw.drop_duplicates() #todo: clean up - his line is not used
     classyfire = classyfire_raw.dropna(subset="Kingdom")
 
     hierarchy = ["Kingdom", "Superclass", "Class", "Subclass"]
@@ -70,15 +70,17 @@ def calculate_fingerprints(df, radius=2, fpSize=1024, **kwargs):
     Wrapper function to calculate fingerprints
     :param df: input dataframe with standardized SMILES
     :**kwargs: fingerprint calculation parameters in addition to radius and fpSize (defaults provided)
-    :return: pandas DataFrame of fingerprints
+    :return: pandas DataFrame of fingerprints, input df annoated with 'FP_HEX'
     """
     print("Calculating fingerprints ...")
-    fingerprints = pd.DataFrame(calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=radius, fpSize=fpSize, **kwargs))
-    df_fingerprints = pd.concat([df["INCHIKEY"], fingerprints], axis=1)
-    
+    fps, hex_str =  calculate_descriptors_morgan_df(df, 'standardized SMILES', radius=radius, fpSize=fpSize, **kwargs)
+    fingerprints = pd.DataFrame(fps)
+    fingerprints['FP_HEX'] = hex_str # use hex str as index
     print("Fingerprints calculated.")
 
-    return df_fingerprints
+    df['FP_HEX'] = hex_str #add hex_str to coordinates
+
+    return fingerprints, df
 
 
 def preprocess_data(df, radius=2, fpSize=1024, **kwargs):
@@ -92,11 +94,11 @@ def preprocess_data(df, radius=2, fpSize=1024, **kwargs):
     
     df = standardize_structures(df) # add standardized SMILES and INCHIKEY columns
 
-    df_fingerprints = calculate_fingerprints(df, radius=2, fpSize=1024, **kwargs)
+    df_fingerprints, df = calculate_fingerprints(df, radius=2, fpSize=1024, **kwargs)
     
     print("Data preprocessed (standardized SMILES, INCHIKEY) and fingerprints calculated.")
 
-    return df_fingerprints
+    return df_fingerprints, df
 
 
 def load_input_file(file_name, folder_name):
@@ -127,6 +129,10 @@ def save_fingerprints(fingerprints, folder_name, file_name):
     fingerprints.to_csv(fingerprints_path, index=False)
     print("Fingerprints saved to ", fingerprints_path)
 
+def update_df(new_df, folder_name, file_name, target):
+    output_path = os.path.join(PROJECT_ROOT, "data", folder_name, target + "_" + file_name + '.csv')
+    new_df.to_csv(output_path, index=False)
+    print('Saved new dataframe to', output_path)
 
 def save_user_file(user_dataframe, folder_name, file_name):
     """
@@ -154,6 +160,19 @@ def load_fingerprints(folder_name, file_name):
     fingerprints_df_path = os.path.join(PROJECT_ROOT, "data", folder_name, "fingerprints_" + file_name + '.csv')
     fingerprints = pd.read_csv(fingerprints_df_path)
     return fingerprints
+
+# def load_fingerprints(df): # does not work, but would be nice
+#     assert 'FP_HEX' in df.columns, ("FP_HEX is missing from coordinates file. "
+#                                                 "Run preprocess data before loading fingerprints")
+#     fingerprints = df['FP_HEX'].apply(hex_to_bv)
+#
+#     fingerprints['FP_HEX'] = df['FP_HEX']
+#     return fingerprints
+#
+#
+# def hex_to_bv(hex_str):
+#     binary = bytes.fromhex(hex_str)
+#     return DataStructs.CreateFromBinaryText(binary)
 
 # -----------------------------
 # Structures and features
@@ -435,7 +454,9 @@ def calculate_descriptors_morgan(smiles, **kwargs):
     if (smiles=="") or (mol is None):
         arr[:] = np.nan
 
-    return arr
+    hex_str = fp.ToBinary().hex()
+
+    return arr, hex_str
 
 
 def calculate_descriptors_morgan_df(df, col_smiles="standardized SMILES", **kwargs):
@@ -456,7 +477,10 @@ def calculate_descriptors_morgan_df(df, col_smiles="standardized SMILES", **kwar
     """
 
     d = df[col_smiles].apply(calculate_descriptors_morgan, **kwargs)
-    return pd.DataFrame.from_records(d)
+    df = pd.DataFrame.from_records(d)
+    matrix = pd.DataFrame.from_records(df[0])
+    hex = df[1].values
+    return matrix, hex
 
 
 def get_inchikeys(smiles):
