@@ -33,7 +33,8 @@ def main():
 
     # if IS_DEMO:
     if MODE == "demo":
-        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/18723920/files/demo_assets.zip")
+        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/20266750/files/demo_assets.zip")
+        # DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/18723920/files/demo_assets.zip")
         # DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "16b0ecfa753c9f19ac6da2fad391024c")
         DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "6ede94de0317fd5a7ecfe071bee8c47d")
  
