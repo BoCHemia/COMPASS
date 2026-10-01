@@ -5,7 +5,7 @@ import os
 from rdkit import Chem
 from rdkit.Chem import Draw
 
-from modules.modeling import extract_knn_results, load_coordinates
+from modules.modeling import load_coordinates
 from modules.visualizing import detect_color_type, plot_chemical_space, plot_similarity_histograms, plot_similarity_threshold_pie, plot_treemap
 from modules.preprocessing import get_demo_assets_root
 
@@ -128,8 +128,8 @@ def main():
     # - Enable .csv upload when the user selects 'my_own_substances'
     if target_space == 'my_own_substances':
         if IS_DEMO:
-            st.sidebar.warning("Uploading your own dataset is only available using the full version." \
-            "The full versions is distributed using Docker and can be run locally on your machine;" \
+            st.sidebar.warning("Uploading your own dataset is only available using the full version." 
+            "The full versions is distributed using Docker and can be run locally on your machine;" 
             "please follow this [link](https://github.com/BoCHemia/global-chemical-space/tree/develop) and refer to the README for instructions. ")
 
             st.stop()
@@ -169,8 +169,8 @@ def main():
     include_similarity = st.sidebar.checkbox("include similarity calculation")
 
     if IS_DEMO & include_similarity:
-            st.sidebar.warning("Uploading similarity calculations are currently not available in the demo version." \
-            "The full version is distributed using Docker and can be run locally on your machine;" \
+            st.sidebar.warning("Uploading similarity calculations are currently not available in the demo version." 
+            "The full version is distributed using Docker and can be run locally on your machine;" 
             "please follow this [link](https://github.com/BoCHemia/global-chemical-space/tree/develop) and refer to the README for instructions. ")
 
 
@@ -252,7 +252,7 @@ def main():
             progress_bar = st.progress(0)
             status_userdata = st.empty()
 
-            from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints, update_df
+            from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints
 
             progress_bar.progress(5)
 
@@ -575,7 +575,7 @@ def main():
             col1, col2 = st.columns(2)  # create two columns
 
             with col1:
-                figure_2 = plot_similarity_histograms(similarity_ref, similarity_target, threshold=threshold)
+                figure_2 = plot_similarity_histograms(similarity_ref, similarity_target, threshold=threshold, darkmode=darkmode)
                 with st.container(border=True):
                     st.plotly_chart(figure_2, width='stretch')
 

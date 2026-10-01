@@ -219,7 +219,7 @@ def plot_chemical_space(df, nametag = '', map_on=None,
 
     return merged_fig
 
-def plot_similarity_histograms(sim_ref, sim_target, threshold=None, nbins=100, opacity=0.7):
+def plot_similarity_histograms(sim_ref, sim_target, threshold=None, nbins=100, opacity=0.7, darkmode=False):
     """
     Plot overlaid similarity histograms for reference and target datasets.
     
@@ -229,6 +229,9 @@ def plot_similarity_histograms(sim_ref, sim_target, threshold=None, nbins=100, o
     :param opacity: float, opacity for overlaid bars
     :return: plotly.graph_objects.Figure
     """
+    # handle darkmode
+    black_or_white = 'white' if darkmode else 'black' # use black for light mode and white for darkmode
+
     # Add a dataset identifier
     df_ref_plot = sim_ref.to_frame(name='Similarity').copy()
     df_ref_plot['dataset'] = 'Reference'
@@ -241,7 +244,7 @@ def plot_similarity_histograms(sim_ref, sim_target, threshold=None, nbins=100, o
     
 
     custom_colors = {'Reference': "#adadad",
-                    'Target': '#000000'}
+                    'Target': black_or_white}
     
     # Create histogram
     fig = px.histogram(
@@ -286,14 +289,14 @@ def plot_similarity_histograms(sim_ref, sim_target, threshold=None, nbins=100, o
     fig.update_layout(
         title=dict(text=f'Distribution of similarity with Target chemicals',x=0.5,xanchor='center'),
         margin=dict(l=40, r=40, t=80, b=40),
-        font_color='black',
+        font_color=black_or_white,
         # align legend look 
         legend_tracegroupgap=0, 
         legend_itemsizing='constant',
         font=dict(
             family="Arial",
             size=12,
-            color="black"),)
+            color=black_or_white),)
     
     return fig
 
