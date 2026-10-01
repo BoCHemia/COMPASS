@@ -28,4 +28,5 @@ ALLOWED_MAPPINGS: set[tuple[str, str]] = {
 
 def is_mapping_allowed(reference_space: str, target_space: str) -> bool:
     """Return True if (reference_space, target_space) is an allowed mapping."""
-    return (reference_space, target_space) in ALLOWED_MAPPINGS
+     # No target space is always allowed
+    return (reference_space, target_space) in ALLOWED_MAPPINGS or target_space == None

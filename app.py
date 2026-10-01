@@ -29,8 +29,8 @@ def main():
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
     print(MODE)  # "demo" or "full"
 
+    # MODE = 'server'  # todo: !!!! remove !!!!
     IS_DEMO = MODE == "demo"
-
     # if IS_DEMO:
     if MODE == "demo":
         DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/20266750/files/demo_assets.zip")
@@ -180,6 +180,7 @@ def main():
         submitted = st.form_submit_button(submit_message)  
         if submitted:
             st.session_state["submitted"] = True
+            # st.cache_resource.clear()  #todo Avoid reusing cached files on resubmission?
 
     if "submitted" not in st.session_state:
         st.write(f"Please press the '{submit_message}' button to proceed.")
@@ -193,8 +194,8 @@ def main():
         if (available_ref_spaces_dict.get(reference_space)) and (reference_space_version is None):
             missing.append("reference version")
 
-        if target_space is None:
-            missing.append("target space")
+        # if target_space is None:
+        #     missing.append("target space")
 
         if (available_ref_spaces_dict.get(target_space)) and (target_space_version is None):
             missing.append("target version")
@@ -328,14 +329,7 @@ def main():
 
 
 
-    with st.spinner("Projecting your substances of interest", show_time=True):
-        # ###### Check that target coordiantes exist ##### #todo
-        # ###### This should work with user coordinates as well, but needs to be tested
-        # target_coordinates_file = os.path.join(target_folder_name, f"{target_file_name}_coordinates.csv")
-        # if not os.path.exists(target_coordinates_file):
-        #     st.warning(f"Target coordinates file does not exist: {target_coordinates_file}")
-        #     st.stop()  # Stop execution if target coordinates don't exist
-
+    with st.spinner("Drawing chemical space map...", show_time=True):
 
         time.sleep(3)
         project_progress_bar.progress(10)
@@ -526,15 +520,19 @@ def main():
                                                    column_for_color_map=hue_target, color_type=color_type_target,
                                                    palette=palette_target,
                                                    symbol='diamond', size=3, opacity=0.5)
-                else:
+                else: # no target hue indicated, show b&w
                     color = 'black'
                     if darkmode:
                         color = 'white'
+                    print(target_coordinates.columns)
                     figure_1 = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space',
                                                    map_on=figure,
                                                    hover_name='PREFERRED_NAME', hover_data=hover_data_available,
                                                    color=color,
                                                    symbol='diamond', size=3, opacity=0.7)
+
+            else: # no target space
+                figure_1 = figure
 
             selected = st.plotly_chart(figure_1, on_select='rerun')
 
@@ -579,7 +577,7 @@ def main():
             with col1:
                 figure_2 = plot_similarity_histograms(similarity_ref, similarity_target, threshold=threshold)
                 with st.container(border=True):
-                    st.plotly_chart(figure_2, use_container_width=True)
+                    st.plotly_chart(figure_2, width='stretch')
 
             with col2:
                 if threshold is not None:
@@ -593,7 +591,7 @@ def main():
 
                     if figure_3 is not None:
                         with st.container(border=True):
-                            st.plotly_chart(figure_3, use_container_width=True)
+                            st.plotly_chart(figure_3, width='stretch')
 
 
     with st.container(border=True):
@@ -610,7 +608,7 @@ def main():
     #     required = {"Superclass", "Class", "Subclass"}
     #     if required.issubset(df_treemap.columns):
     #         figure = plot_treemap(df_treemap)
-    #         st.plotly_chart(figure, use_container_width=True)
+    #         st.plotly_chart(figure, width='stretch')
     #     else:
     #         st.info("Treemap can only be generated for datasets containing ClassyFire taxonomy (Superclass, Class, Subclass).")
 
@@ -624,22 +622,9 @@ def main():
 
         # --- Reference ---
         if required.issubset(reference_coordinates.columns):
-            
-            #st.caption(reference_folder_name + ' reference space') - this creates a larger gap so using markdown instead
-            st.markdown(f"""
-                        <p style="
-                            margin-bottom:0px;
-                            margin-top:0px;
-                            font-size:0.8rem;
-                            color:black;
-                        ">
-                        {reference_folder_name} reference space
-                        </p>
-                        """,
-                        unsafe_allow_html=True)
-            
+            st.markdown('**' +reference_folder_name + ' reference space**')
             fig_reference = plot_treemap(reference_coordinates)
-            st.plotly_chart(fig_reference, use_container_width=True)
+            st.plotly_chart(fig_reference, width='stretch')
         else:
             st.info(
                 "Reference dataset does not contain required "
@@ -647,26 +632,18 @@ def main():
             )
 
         # --- Target ---
-        if required.issubset(target_coordinates.columns):
-            #st.caption(target_folder_name + ' target space') - this creates a larger gap so using markdown instead
-            st.markdown(f"""
-                        <p style="
-                            margin-bottom:0px;
-                            margin-top:0px;
-                            font-size:0.8rem;
-                            color:black;
-                        ">
-                        {target_folder_name} target space
-                        </p>
-                        """,
-                        unsafe_allow_html=True)
-            
+        if target_space and required.issubset(target_coordinates.columns):
+            st.markdown('**' +target_folder_name + ' target space**')
             fig_target = plot_treemap(target_coordinates)
-            st.plotly_chart(fig_target, use_container_width=True)
-        else:
+            st.plotly_chart(fig_target, width='stretch')
+        elif target_space:
             st.info(
                 "Target dataset does not contain required "
                 "ClassyFire taxonomy columns."
+            )
+        else:
+            st.info(
+                "No target dataset provided. "
             )
 
     with st.container(border=True):
