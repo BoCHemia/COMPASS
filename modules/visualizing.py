@@ -262,7 +262,7 @@ def plot_similarity_histograms(sim_ref, sim_target, threshold=None, nbins=100, o
     # Add vertical lines at means
 
     line_colors = {'Reference': "#AAA7A7",
-                    'Target': '#000000'}
+                    'Target': black_or_white}
     
     mean_ref = df_ref_plot['Similarity'].mean()
     mean_target = df_target_plot['Similarity'].mean()

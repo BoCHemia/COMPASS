@@ -134,12 +134,13 @@ def main():
 
             st.stop()
 
-        user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest", type="csv")
+        user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest"
+                                                 "Mandatory columns: 'SMILES', 'PREFERRED_NAME'", type="csv")
 
         @st.cache_data
         def cache_df(df):
             # IMPORTANT: Cache the conversion to prevent computation on every rerun
-            return df.to_csv().encode("utf-8")
+            return df.to_csv(index=False).encode("utf-8")
         example_csv = pd.read_csv(os.path.join('app_data', 'example_target_chemicals.csv'))
         csv = cache_df(example_csv)
 
@@ -157,6 +158,11 @@ def main():
 
             # Load the uploaded data, save to data/_USER folder
             df_user = pd.read_csv(user_target_chemicals)
+
+            if not set(['SMILES', 'PREFERRED_NAME']).issubset(list(df_user.columns)):
+                st.error('**Error:** The columns SMILES and PREFERRED_NAME are required in the input file.')
+                st.stop()
+
             df_user.to_csv(os.path.join('data', '_USER', 'raw_' + target_file_name + '.csv'), index=False)
 
             # Show the input data
@@ -524,7 +530,6 @@ def main():
                     color = 'black'
                     if darkmode:
                         color = 'white'
-                    print(target_coordinates.columns)
                     figure_1 = plot_chemical_space(target_coordinates, nametag=target_folder_name + ' target space',
                                                    map_on=figure,
                                                    hover_name='PREFERRED_NAME', hover_data=hover_data_available,
