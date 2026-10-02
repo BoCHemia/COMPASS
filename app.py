@@ -134,7 +134,7 @@ def main():
 
             st.stop()
 
-        user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest"
+        user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest. "
                                                  "Mandatory columns: 'SMILES', 'PREFERRED_NAME'", type="csv")
 
         @st.cache_data
@@ -423,13 +423,17 @@ def main():
 
                     return hue_columns
 
-                cols = st.columns(2)
+                cols = st.columns(3)
                 if target_space:
                     dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring",
                                                          ["Reference", "Target", "None"], index=2)
                 else:
                     dataset_to_color = cols[0].selectbox("Choose a dataset to customize coloring", ["Reference"],
                                                          index=0)
+                marker_size_reference = 3
+                alpha_reference = 0.7
+                marker_size_target = 3
+                alpha_target = 0.7
 
                 if dataset_to_color == "Reference":
                     hue_options_ref = [None] + list(
@@ -440,6 +444,7 @@ def main():
 
                     hue_ref = cols[1].selectbox("Color reference by", hue_options_ref, index=0)
                     hue_target = None  # reset target coloring
+
                 else:
                     if target_space == 'my_own_substances':
                         drop_list = ['ID', 'CASRN', 'PREFERRED_NAME', 'INCHIKEY', 'SMILES', 'standardized SMILES', 'TSNE1', 'TSNE2',
@@ -454,6 +459,37 @@ def main():
 
                     hue_target = cols[1].selectbox("Color target by", hue_options_target, index=0)
                     hue_ref = None  # reset reference coloring
+
+                # Advanced settings (collapsed by default)
+                settings = cols[2].selectbox("Display settings", ["Default", "Advanced"], index=0)
+                if settings == "Advanced":
+                    marker_size_reference = cols[0].slider(
+                        "Marker size reference",
+                        min_value=0.5,
+                        max_value=30.0,
+                        value=3.0
+                    )
+                    alpha_reference = cols[1].slider(
+                        "Opacity reference",
+                        min_value=0.0,
+                        max_value=1.0,
+                        value=0.7,
+                        step=0.05
+                    )
+                    if target_space:
+                        marker_size_target = cols[0].slider(
+                            "Marker size target",
+                            min_value=0.5,
+                            max_value=30.0,
+                            value=3.0
+                        )
+                        alpha_target = cols[1].slider(
+                            "Opacity target",
+                            min_value=0.0,
+                            max_value=1.0,
+                            value=0.5,
+                            step=0.05
+                        )
 
                 # similarity settings
                 if include_similarity and not IS_DEMO:  # hue_ref=='Similarity' or hue_target=='Similarity':
@@ -499,14 +535,14 @@ def main():
                 figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space',
                                              hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
                                              column_for_color_map=hue_ref, color_type=color_type_ref,
-                                             palette=palette_ref)
+                                             palette=palette_ref, size=marker_size_reference, opacity=alpha_reference)
             else:
                 color = 'lightgrey'
                 if darkmode:
                     color = 'dimgrey'
                 figure = plot_chemical_space(reference_coordinates, nametag=reference_folder_name + ' reference space',
                                              hover_name='PREFERRED_NAME', hover_data=hover_data_ref_available,
-                                             color=color)
+                                             color=color, size=marker_size_reference, opacity=alpha_reference)
 
             # - target set
             if target_space:
@@ -525,7 +561,7 @@ def main():
                                                    hover_name='PREFERRED_NAME', hover_data=hover_data_available,
                                                    column_for_color_map=hue_target, color_type=color_type_target,
                                                    palette=palette_target,
-                                                   symbol='diamond', size=3, opacity=0.5)
+                                                   symbol='diamond', size=marker_size_target, opacity=alpha_target)
                 else: # no target hue indicated, show b&w
                     color = 'black'
                     if darkmode:
@@ -534,17 +570,13 @@ def main():
                                                    map_on=figure,
                                                    hover_name='PREFERRED_NAME', hover_data=hover_data_available,
                                                    color=color,
-                                                   symbol='diamond', size=3, opacity=0.7)
+                                                   symbol='diamond', size=marker_size_target, opacity=alpha_target) # previously: size=3, opacity=0.7)
 
             else: # no target space
                 figure_1 = figure
 
             selected = st.plotly_chart(figure_1, on_select='rerun')
 
-            # figure_1.update_traces(
-            #     selected=dict(marker=dict(opacity=1)),
-            #     unselected=dict(marker=dict(opacity=1))
-            # )
 
         with col_info:
             if show:
