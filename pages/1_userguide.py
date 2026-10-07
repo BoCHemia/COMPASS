@@ -7,15 +7,18 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🧭 COMPASS app")
+st.title("⚙️ User guide")
 st.markdown("""
 COMPASS (**COMPA**rative chemical **S**pace **S**ystem) is an interactive tool for visualizing,
 navigating, and comparing chemical spaces.
 
 The application allows users to map chemical datasets onto harmonized reference spaces,
-helping to locate and explore chemical data sets in relation to known chemical landscapes.
+helping to locate and explore chemical data sets in relation to known chemical landscapes.""")
+st.subheader("Demo vs. full version")
+st.markdown("""
+The online [demo version](compass-demo.streamlit.app) has limited functionalities with predefined reference and target datasets.
 
-You can provide your own data set or select from pre-defined target spaces.
+To map your own chemicals to one of the reference spaces, you can run COMPASS locally ([instructions here](https://github.com/BoCHemia/COMPASS)).
 """)
 
 st.divider()
@@ -66,7 +69,7 @@ st.divider()
 # Main Visualization
 # -------------------------------------------------------------------------------------
 
-st.header("🗺️ Chemical Space Map")
+st.header("🗺️ Chemical space map")
 
 st.markdown("""
 The main visualization is an interactive two-dimensional map of chemical space. 
@@ -102,7 +105,7 @@ st.divider()
 # Display Controls
 # -------------------------------------------------------------------------------------
 
-st.header("🎨 Display Controls")
+st.header("🎨 Display controls")
 
 with st.expander("Dataset Coloring", expanded=True):
     st.markdown("""
@@ -138,7 +141,7 @@ st.divider()
 # Molecule Inspection
 # -------------------------------------------------------------------------------------
 
-st.header("🔍 Molecule Inspection")
+st.header("🔍 Molecule inspection")
 
 st.markdown("""
 Enable **Visualize selected molecule** to show structure of selected molecule.
@@ -157,7 +160,7 @@ st.divider()
 # Similarity
 # -------------------------------------------------------------------------------------
 
-st.header("🧪 Similarity Analysis (Full Version)")
+st.header("🧪 Similarity analysis")
 
 st.markdown("""
 Similarity calculations are available only in the full version of COMPASS.
@@ -172,7 +175,7 @@ The analysis compares:
 - Target compounds against other target compounds
 """)
 
-with st.expander("Similarity Parameters"):
+with st.expander("Similarity parameters"):
     st.markdown("""
 ### Number of nearest neighbors (k)
 
@@ -261,48 +264,29 @@ with st.expander("Optional data", expanded=True):
     st.markdown("""
 Additional data columns may be provided, including:
 
-- "CASRN"
-- "INCHIKEY"
-- ClassyFire classes: "Kingdom", "Superclass", "Class", "Subclass"
+- `CASRN`
+- `INCHIKEY`
+- ClassyFire classes: `Kingdom`, `Superclass`, `Class`, `Subclass`
 - Any other columns with categorical or continuous data
 
-Additional columns can later be used for coloring and filtering.
+Additional columns can later be used for coloring.
 """)
 
 st.divider()
 
-# -------------------------------------------------------------------------------------
-# Demo vs Full version
-# -------------------------------------------------------------------------------------
-
-st.header("⚠️ Demo vs full version")
-
-st.warning("""
-The public demo version contains a subset of COMPASS functionality.
-""")
-
-st.markdown("""
-Features are currently only in the full version:
-
-- Uploading custom datasets including
-    - Generation of new coordinate mappings
-    - Providing your own ClassyFire annotations (e.g., if ClassyFire coverage by COMPASS is not satisfactory)
-- Similarity calculations
-""")
-
-st.divider()
 
 # -------------------------------------------------------------------------------------
 # Privacy
 # -------------------------------------------------------------------------------------
 
-st.header("🔒 Data Privacy")
+st.header("🖥️ Full version")
 
 st.markdown("""
 When running the full version locally:
 
+- You can map your own list of chemicals
 - Uploaded files remain on your machine
-- User data, calculated TSNE coordinates and ClassyFire classifications are stored in `data/_USER/`
+- Calculated TSNE coordinates and ClassyFire classifications are stored in `data/_USER/` and can be re-used for other purposes.
 """)
 
 st.divider()

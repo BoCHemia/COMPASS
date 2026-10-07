@@ -329,10 +329,6 @@ def main():
     project_progress_bar = st.progress(0)
     status = st.empty()
 
-
-
-
-
     with st.spinner("Drawing chemical space map...", show_time=True):
 
         time.sleep(3)

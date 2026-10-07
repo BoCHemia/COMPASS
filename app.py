@@ -12,7 +12,7 @@ from modules.preprocessing import get_demo_assets_root
 
 def main():
 
-    st.set_page_config(page_title="Run COMPASS", page_icon="🧭")
+    st.set_page_config(page_title="Run COMPASS", page_icon="🧭", layout="wide")
 
     pg = st.navigation([
         st.Page("pages/0_compass.py", title="COMPASS app", icon="🧭"),
