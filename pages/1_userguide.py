@@ -83,7 +83,6 @@ with col1:
     left.write("""
 **Reference compounds**
 
-• Displayed as circles  
 • Grey by default  
 • Can be colored by taxonomy or similarity
 """)
@@ -93,12 +92,18 @@ with col2:
     right.write("""
 **Target compounds**
 
-• Displayed as diamonds  
 • Black/white by default  
 • Can be colored independently
 """)
 
-st.markdown("""Tick the dark mode box if your browser runs in dark mode.""")
+st.subheader("Hints")
+st.markdown("""
+- Tick the dark mode box if your browser runs in dark mode
+- Use the navigation bar on the top right of the plot to zoom into a region of interest
+- Enjoy the map in full screen mode
+- Click on the camera icon to download the map as high-resolution .png file
+- Click on a data label to add/remove the selected category from the map, double-click to reverse the selection.
+""")
 st.divider()
 
 # -------------------------------------------------------------------------------------
@@ -109,31 +114,31 @@ st.header("🎨 Display controls")
 
 with st.expander("Dataset Coloring", expanded=True):
     st.markdown("""
-**Choose a dataset to customize coloring**:
-""")
+                **Choose a dataset to customize coloring**:
+                """)
 
     st.markdown("""
-By default, Classyfire classes are provided for coloring:
-
-- Kingdom
-- Superclass
-- Class
-- Subclass
-
-When mapping your own data, columns in the uploaded table are available for coloring in addition.
-""")
+                By default, Classyfire classes are provided for coloring:
+                
+                - Kingdom
+                - Superclass
+                - Class
+                - Subclass
+                
+                When mapping your own data, columns in the uploaded table are available for coloring in addition.
+                """)
 
 with st.expander("Advanced Display Settings"):
     st.markdown("""
-Open **Display settings → Advanced** to customize marker settings.
-
-Control 
-- **marker size** 
-- **opacity** 
-- **color palette**
-independently for both reference and target compounds.
-
-""")
+                Open **Display settings → Advanced** to customize marker settings.
+                
+                Control 
+                - **marker size** 
+                - **opacity** 
+                - **color palette**
+                independently for both reference and target compounds.
+                
+                """)
 
 st.divider()
 

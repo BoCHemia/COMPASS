@@ -603,7 +603,15 @@ def main():
             else: # no target space
                 figure_1 = figure
 
-            selected = st.plotly_chart(figure_1, on_select='rerun')
+            selected = st.plotly_chart(figure_1, on_select='rerun', config={ "displaylogo": False,
+                                                                                "toImageButtonOptions": {
+                                                                                    "format": "png",
+                                                                                    "filename": "chemical_space",
+                                                                                    "height": 2000,
+                                                                                    "width": 3000,
+                                                                                    "scale": 2
+                                                                                }
+                                                                             })
 
         # render selected molecule
         with col_info:
@@ -642,7 +650,15 @@ def main():
             with col1:
                 figure_2 = plot_similarity_histograms(similarity_ref, similarity_target, threshold=threshold, darkmode=darkmode)
                 with st.container(border=True):
-                    st.plotly_chart(figure_2, width='stretch')
+                    st.plotly_chart(figure_2, width='stretch', config={"displaylogo": False,
+                                                                                "toImageButtonOptions": {
+                                                                                    "format": "png",
+                                                                                    "filename": "similarity_histogram",
+                                                                                    "height": 800,
+                                                                                    "width": 1000,
+                                                                                    "scale": 2
+                                                                                }
+                                                                             })
 
             with col2:
                 if threshold is not None:
@@ -656,7 +672,15 @@ def main():
 
                     if figure_3 is not None:
                         with st.container(border=True):
-                            st.plotly_chart(figure_3, width='stretch')
+                            st.plotly_chart(figure_3, width='stretch', config={"displaylogo": False,
+                                                                                "toImageButtonOptions": {
+                                                                                    "format": "png",
+                                                                                    "filename": "piechart",
+                                                                                    "height": 800,
+                                                                                    "width": 1000,
+                                                                                    "scale": 2
+                                                                                }
+                                                                             })
 
         return
 
@@ -694,7 +718,15 @@ def main():
         if required.issubset(reference_coordinates.columns):
             st.markdown('**' +reference_folder_name + ' reference space**')
             fig_reference = plot_treemap(reference_coordinates, palette=palette)
-            st.plotly_chart(fig_reference, width='stretch')
+            st.plotly_chart(fig_reference, width='stretch', config={"displaylogo": False,
+                                                                                "toImageButtonOptions": {
+                                                                                    "format": "png",
+                                                                                    "filename": "treemap_reference",
+                                                                                    "height": 1000,
+                                                                                    "width": 2500,
+                                                                                    "scale": 2
+                                                                                }
+                                                                             })
         else:
             st.info(
                 "Reference dataset does not contain required "
@@ -705,7 +737,15 @@ def main():
         if target_space and required.issubset(target_coordinates.columns):
             st.markdown('**' +target_folder_name + ' target space**')
             fig_target = plot_treemap(target_coordinates, palette=palette)
-            st.plotly_chart(fig_target, width='stretch')
+            st.plotly_chart(fig_target, width='stretch', config={"displaylogo": False,
+                                                                                "toImageButtonOptions": {
+                                                                                    "format": "png",
+                                                                                    "filename": "treemap_target",
+                                                                                    "height": 1000,
+                                                                                    "width": 2500,
+                                                                                    "scale": 2
+                                                                                }
+                                                                             })
         elif target_space:
             st.info(
                 "Target dataset does not contain required "
