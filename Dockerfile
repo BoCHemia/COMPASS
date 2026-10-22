@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG PYTHON_VERSION=3.12.0
+ARG PYTHON_VERSION=3.13.5
 FROM python:${PYTHON_VERSION}-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     libxext6 \
     libsm6 \
+    libexpat1 \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies (with pip cache + requirements bind-mount)

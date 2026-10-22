@@ -88,7 +88,7 @@ def load_model_offset(file_name):
     print(f"Loaded model offset from {offset_path}")
     return offset
 
-def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
+def save_coordinates(coordinates, folder_name, file_name, reference_name="", base_dir="data"):
     """
     Save coordinates to output file in data folder (data/[folder_name]/output_[file_name].csv)
 
@@ -98,7 +98,7 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     :param reference_name: Name tag of the reference data
     """
     # load input df
-    user_input_folder = os.path.join(PROJECT_ROOT, "data", folder_name)
+    user_input_folder = os.path.join(PROJECT_ROOT, base_dir, folder_name)
     assert user_input_folder
     if user_input_folder:
         input_df_path = os.path.join(user_input_folder, "input_" + file_name + ".csv")
@@ -112,7 +112,7 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     if reference_name:
         file_name += "_on_" + reference_name
     # save data frame annotated with t-SNE coordinates
-    coordinates_path = os.path.join(PROJECT_ROOT, 'data', folder_name, "output_" + file_name + '.csv')
+    coordinates_path = os.path.join(PROJECT_ROOT, base_dir, folder_name, "output_" + file_name + '.csv')
     df_coordinates.to_csv(coordinates_path, index=False)
     print(f"Saved coordinates to {coordinates_path}")
 

@@ -6,8 +6,8 @@ from modules.preprocessing import *
 import time
 
 # load t-SNE model object
-reference_file_name = "zeropm_partial"
-reference_folder_name = "ZeroPM"
+reference_file_name = "coconut_partial"
+reference_folder_name = "COCONUT"
 model = load_model(reference_file_name)
 offset = load_model_offset(reference_file_name)
 
@@ -16,11 +16,11 @@ MODE = 'transform'  # other options: 'lookup', 'lookup_transform'
 # load target data to plot
 datasets = [
             ("AgroTrak", "agrotrak_zhang_2025_partial"),
-            ("COCONUT", "coconut_partial"),
+            # ("COCONUT", "coconut_partial"),
             ("DrugBank", "drugbank_5.1.13_partial"),
-            ("PFAS", "pfas_nist_partial"),
-            ("PlastChem", "plastchem_db_v1.01_partial"),
-            ("ZeroPM", "zeropm_partial"),
+            # ("PFAS", "pfas_nist_partial"),
+            # ("PlastChem", "plastchem_db_v1.01_partial"),
+            # ("ZeroPM", "zeropm_partial"),
             ]
 for folder_name, file_name in datasets:
 

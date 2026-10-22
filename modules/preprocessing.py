@@ -107,7 +107,7 @@ def load_input_file(file_name, folder_name):
     return df
 
 
-def save_fingerprints(fingerprints, folder_name, file_name):
+def save_fingerprints(fingerprints, folder_name, file_name, base_dir="data"):
     """
     Save fingerprints to .csv file
     :param fingerprints: fingerprints dataframe
@@ -115,7 +115,7 @@ def save_fingerprints(fingerprints, folder_name, file_name):
     :param folder_name: "input" data folder name
     """
     # out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
-    out_dir = os.path.join(PROJECT_ROOT, "data", folder_name)
+    out_dir = os.path.join(PROJECT_ROOT, base_dir, folder_name)
     os.makedirs(out_dir, exist_ok=True)
 
     fingerprints_path = os.path.join(out_dir, "fingerprints_" + file_name + '.csv')
@@ -127,7 +127,7 @@ def update_df(new_df, folder_name, file_name, target):
     new_df.to_csv(output_path, index=False)
     print('Saved new dataframe to', output_path)
 
-def save_user_file(user_dataframe, folder_name, file_name):
+def save_user_file(user_dataframe, folder_name, file_name, base_dir="data"):
     """
     Save file input file in user_folder for later use
     :param user_dataframe: typically a file uploaded by the user of the app
@@ -135,7 +135,7 @@ def save_user_file(user_dataframe, folder_name, file_name):
     :param file_name: file name provided by the user
     """
     # out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
-    out_dir = os.path.join(PROJECT_ROOT, "data", folder_name)
+    out_dir = os.path.join(PROJECT_ROOT, base_dir, folder_name)
     os.makedirs(out_dir, exist_ok=True)
 
     user_file_path = os.path.join(out_dir, "input_" + file_name + '.csv')

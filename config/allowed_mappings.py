@@ -3,7 +3,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Convention: (reference_space, target_space)
 ALLOWED_MAPPINGS: set[tuple[str, str]] = {
-    # ("ZeroPM", "ZeroPM"),
     ("ZeroPM", "DrugBank"),
     ("ZeroPM", "PFAS"),
     ("ZeroPM", "PlastChem"),
@@ -11,17 +10,17 @@ ALLOWED_MAPPINGS: set[tuple[str, str]] = {
     ("ZeroPM", "AgroTrak"),
 
     # Coconut
-#     ("Coconut", "Coconut"),
     ("COCONUT", "DrugBank"), 
     ("COCONUT", "AgroTrak"),
 
     # PlastChem
-#     ("PlastChem", "PlastChem"),
     ("PlastChem", "PFAS"),
 
     # DrugBank
-#    ("DrugBank", "DrugBank"),
     ("DrugBank", "PFAS"),
+
+    # Agrotrak
+    ("AgroTrak", "PFAS"),
 
 }
 
