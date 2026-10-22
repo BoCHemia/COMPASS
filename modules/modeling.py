@@ -1,6 +1,5 @@
 from openTSNE.sklearn import TSNE
 from modules.preprocessing import *
-import zipfile
 import yaml
 import joblib
 
@@ -25,44 +24,12 @@ def ensure_dirs():
     os.makedirs(os.path.join(PROJECT_ROOT, "output"), exist_ok=True)
     os.makedirs(os.path.join(PROJECT_ROOT, "models"), exist_ok=True)
     os.makedirs(os.path.join(PROJECT_ROOT, "data"), exist_ok=True)
-
-
-def save_pickle(obj, path):
-    """
-    Save object as a pickle file
-    :param obj: objeckt
-    :param path: path to save pickle file
-    """
-    with open(path, "wb") as f:
-        pickle.dump(obj, f)
-
-
-def load_pickle(path):
-    """
-    Load pickled file
-    :param path: path to saved pickle file
-    :return: object in the pickled file
-    """
-    with open(path, "rb") as f:
-        return pickle.load(f)
-
-def unzip_and_load(path_to_zipfile):
-    """
-    Unzip and unpickle a zip file to load a tSNE  model
-    :param path_to_zipfile: Path to zip file
-    :return: tSNE model objcet
-    """
-    archive = zipfile.ZipFile(path_to_zipfile, 'r')
-    model_name_pkl = archive.infolist()[0]
-    model_pkl = archive.read(model_name_pkl)
-    model = pickle.loads(model_pkl)
-    return model
     
 def load_configs(params = 'tsne_params'):
     """
-    Load tSNE configurations from the config folder
+    Load t-SNE configurations from the config folder
     :param params: name of file in config folder (without the .yaml)
-    :return: dictionary of hyperparameters to be used for tSNE training
+    :return: dictionary of hyperparameters to be used for t-SNE training
     """
     with open(os.path.join(PROJECT_ROOT, 'config', params+'.yaml'), 'r') as file:
         hyperparameters = yaml.safe_load(file)
@@ -75,7 +42,7 @@ def load_configs(params = 'tsne_params'):
 def fit_tsne_model(df_fingerprints):
     """
     Fits the TSNE model on the boolean fingerprint array (X) and saves the fitted embedding object.
-    If the pickled object exists, it is loaded instead of training again.
+    If the joblib object exists, it is loaded instead of training again.
 
     :param df_fingerprints: fingerprints dataframe
     :return: fitted model object and coordinates of transformed fingerprints
@@ -97,38 +64,18 @@ def fit_tsne_model(df_fingerprints):
     print('Finished training')
     return tsne, coordinates
 
-def save_model(model, file_name, pickle=True, zip=True, use_joblib=False):
+def save_model(model, file_name):
     """
-    Save model as pickle to temp and as zipped pickle to output
-    :param model: trained tSNE model
+    Save model as joblib object to models folder
+    :param model: trained t-SNE model
     :param file_name: name tag of the original data file (e.g. for 'data_market.csv' the file_name would be 'data_market')
-    :param pickle: save as pickle file, True by default
-    :param zip: compress to zip file, True by default
-    :param use_joblib: save as joblib file, False by default. If joblib is true, no pickle file will be generated
     """
     ensure_dirs()
-
-    # Saving trained tSNE object to temp folder
-    if use_joblib:
-        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
-        print("--> Joblib tSNE object")
-        joblib.dump(model, model_path, compress=5)
-        print(f"Saved fitted tSNE embedding to {model_path}")
-
-    elif pickle:
-        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.pkl')
-        print("--> Pickle tSNE object")
-        save_pickle(model, model_path)
-        print(f"Saved fitted tSNE embedding to {model_path}")
-
-        # Saving zipped trained tSNE object to output folder
-        if zip:
-            model_path_zip = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
-            print('--> Zip tSNE object')
-            with zipfile.ZipFile(model_path_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
-                zipf.write(model_path)
-            print(f"Saved fitted tSNE embedding as zip file to {model_path_zip}")
-
+    # Saving trained t-SNE object to temp folder
+    model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
+    print("--> joblib t-SNE object")
+    joblib.dump(model, model_path, compress=5)
+    print(f"Saved fitted t-SNE embedding to {model_path}")
 
 def save_model_offset(offset, file_name):
     offset_path = os.path.join(PROJECT_ROOT, "models", file_name + '_offset.csv')
@@ -148,6 +95,7 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     :param coordinates: coordinates as received from model fitting with index as InChIKey
     :param folder_name: folder name for saving the input file annotated with TSNE coordinates
     :param file_name: name tag of the original data file (e.g. for 'data_market.csv')
+    :param reference_name: Name tag of the reference data
     """
     # load input df
     user_input_folder = os.path.join(PROJECT_ROOT, "data", folder_name)
@@ -163,8 +111,7 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
 
     if reference_name:
         file_name += "_on_" + reference_name
-    # save df, annotated with TSNE coordinates
-    # Refacting note: output_path -> coordinates_path
+    # save data frame annotated with t-SNE coordinates
     coordinates_path = os.path.join(PROJECT_ROOT, 'data', folder_name, "output_" + file_name + '.csv')
     df_coordinates.to_csv(coordinates_path, index=False)
     print(f"Saved coordinates to {coordinates_path}")
@@ -172,12 +119,13 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     
 def load_coordinates(folder_name, file_name, reference_data="", base_dir="data"):
     """
-    Load tSNE coordinates from file
+    Load t-SNE coordinates from file
 
     :param folder_name: name of the folder
     :param file_name: name tag
     :param reference_data: If indicated, load coordinates of mapping of "file_name" on "reference_data"
-    :return: tSNE coordinates
+    :param base_dir: base directory to load coordinates from
+    :return: t-SNE coordinates
     """
     if reference_data:
         file_name += f'_on_{reference_data}'
@@ -186,27 +134,16 @@ def load_coordinates(folder_name, file_name, reference_data="", base_dir="data")
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
-def load_model(file_name, from_zip=False, use_joblib=False):
+def load_model(file_name):
     """
-    Load model from pickle file (default) or from zip file (not implemented)
+    Load model from joblib object in models folder
     :param file_name: name tag of the original data file (e.g. 'data_market' for 'data_market.csv')
-    :param from_zip: Load from zip file
     :return: model object
     """
     print("--> Loading model")
-    if use_joblib:
-        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
-        print("loading joblib model from: " + model_path)
-        model = joblib.load(filename=model_path)   
-    elif from_zip:
-        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zip')
-        print("loading zip model from: " + model_path)
-        model = unzip_and_load(model_path) 
-    else:
-        model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.pkl')
-        print("loading pickle model from: " + model_path)
-        model = load_pickle(model_path)
-  
+    model_path = os.path.join(PROJECT_ROOT, "models", file_name + '_trained_tSNE.zlib')
+    print("loading joblib model from: " + model_path)
+    model = joblib.load(filename=model_path)
     return model
 
 # -----------------------------
@@ -215,12 +152,12 @@ def load_model(file_name, from_zip=False, use_joblib=False):
 
 def transform_target(model, fingerprints, offset, **kwargs):
     """
-    Transform fingerprints using the provided tSNE model
+    Transform fingerprints using the provided t-SNE model
 
-    :param model: trained tSNE model
+    :param model: trained t-SNE model
     :param fingerprints: fingerprint matrix, including a column "INCHIKEY"
-    :param offset: model-specific offset values to correct the transformed coordinate - 0 by default
-    :return: coordinates of the input compounds in the tSNE space
+    :param offset: model-specific offset values to correct the transformed coordinate
+    :return: coordinates of the input compounds in the t-SNE space
     """
     # Prepare boolean fingerprint array
     print(f"--> Calculating mapping for {fingerprints.shape[0]} compounds")
@@ -249,7 +186,7 @@ def lookup_target(fingerprints, reference_data):
     print("Lookup map loaded:", lookup_map.shape)
     lookup_map.drop_duplicates(subset=['FP_HEX'], inplace=True)
 
-    # fetch coordinates where available based on first 14 letters inchikey (basic structure)
+    # fetch coordinates where available based on first 14 letters InChIKey (basic structure)
     print("Lookup map after removing duplicates based FP_HEX:", lookup_map.shape)
 
     # populate coordinates from lookup map first
@@ -262,12 +199,13 @@ def lookup_target(fingerprints, reference_data):
 
 def lookup_or_transform_target(model, fingerprints, offset, reference_data):
     """
-    Looks up TSNE coordinates in the reference data. For compounds that could not be found in the reference,
-    TSNE coordinates are calculated via the provided tSNE model.
+    Looks up t-SNE coordinates in the reference data. For compounds that could not be found in the reference,
+    t-SNE coordinates are calculated via the provided t-SNE model.
 
-    :param model: tSNE model object
+    :param model: t-SNE model object
     :param fingerprints: fingerprints dataframe
-    :param reference_data: reference data with TSNE coordinates
+    :param offset: model-specific offset values to correct the transformed coordinate
+    :param reference_data: reference data with t-SNE coordinates
     :return: coordinates for all input compounds
     """
     # lookup coordinates in reference_data
@@ -278,7 +216,7 @@ def lookup_or_transform_target(model, fingerprints, offset, reference_data):
     remaining_compounds_df['FP_HEX'] = lookup_coordinates_df[lookup_coordinates_df['TSNE1'].isnull()].drop(columns=['TSNE1','TSNE2'])['FP_HEX'].copy()
     print(f'The remaining {remaining_compounds_df.shape[0]} compounds (out of {fingerprints.shape[0]}) need to be transformed')
     print(f'Remaining compounds have {remaining_compounds_df['FP_HEX'].nunique()} unique fingerprints')
-    # get fingerprints for which TSNE coordinates are missing
+    # get fingerprints for which t-SNE coordinates are missing
     fingerprints_unique = fingerprints.drop_duplicates(subset='FP_HEX')
     transform_fingerprints = remaining_compounds_df.merge(fingerprints_unique, how='left', on='FP_HEX')
 

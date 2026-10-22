@@ -8,7 +8,7 @@ import time
 # load tSNE model object
 reference_file_name = "zeropm_partial"
 reference_folder_name = "ZeroPM"
-model = load_model(reference_file_name, use_joblib=True)
+model = load_model(reference_file_name)
 offset = load_model_offset(reference_file_name)
 
 # load target data to plot

@@ -5,10 +5,10 @@ from modules.modeling import *
 from modules.preprocessing import *
 import time
 
-# load tSNE model object
+# load t-SNE model object
 reference_file_name = "zeropm_partial"
 reference_folder_name = "ZeroPM"
-model = load_model(reference_file_name, use_joblib=True)
+model = load_model(reference_file_name)
 offset = load_model_offset(reference_file_name)
 
 MODE = 'transform'  # other options: 'lookup', 'lookup_transform'
@@ -45,7 +45,8 @@ for folder_name, file_name in datasets:
     elif MODE == 'lookup_transform': # lookup first, transform those not found
         reference_data = load_coordinates(folder_name=reference_folder_name, file_name=reference_file_name)
         coordinates = lookup_or_transform_target(model, new_fingerprints, offset, reference_data)
-
+    else:
+        raise ValueError(f"MODE {MODE} not supported. Set it to 'transform', 'lookup' or 'lookup_transform'")
     end = time.time()
     print(f"{MODE} took {end - start} seconds")
 

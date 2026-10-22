@@ -19,9 +19,10 @@ df_fingerprints = load_fingerprints(input_folder_name, input_data_name) # --> ca
 
 #### train model ####
 trained_model, coordinates = fit_tsne_model(df_fingerprints=df_fingerprints)
-# trained_model = load_model(file_name=input_data_name, use_joblib=True)
+# trained_model = load_model(file_name=input_data_name)
+# trained_model = load_model(file_name=input_data_name)
 # coordinates = load_coordinates(folder_name=input_folder_name, file_name=input_data_name)
-save_model(model=trained_model, file_name=input_data_name, use_joblib=True)
+save_model(model=trained_model, file_name=input_data_name)
 save_coordinates(coordinates=coordinates, folder_name=input_folder_name, file_name=input_data_name)
 
 ### save model offset ###

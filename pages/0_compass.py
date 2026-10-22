@@ -297,7 +297,7 @@ def main():
 
             from modules.modeling import (load_model, load_model_offset, transform_target, save_coordinates)
             st.cache_resource(scope="session", show_spinner=True)(load_model)  # Cache the model loading to prevent reloading on every rerun; scope=session ensures it's loaded once per user session
-            model = load_model(reference_file_name, use_joblib=True)
+            model = load_model(reference_file_name)
 
             st.cache_resource(scope="session", show_spinner=False)(load_model_offset)
             offset = load_model_offset(reference_file_name)
