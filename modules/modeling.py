@@ -1,13 +1,4 @@
-import os
-import pickle
-from unittest.mock import inplace
-
-import numpy as np
-import pandas as pd
 from openTSNE.sklearn import TSNE
-from sklearn.ensemble import RandomForestRegressor
-import matplotlib.pyplot as plt
-import seaborn as sns
 from modules.preprocessing import *
 import zipfile
 import yaml
@@ -113,7 +104,7 @@ def save_model(model, file_name, pickle=True, zip=True, use_joblib=False):
     :param file_name: name tag of the original data file (e.g. for 'data_market.csv' the file_name would be 'data_market')
     :param pickle: save as pickle file, True by default
     :param zip: compress to zip file, True by default
-    :param joblib: save as joblib file, False by default. If joblib is true, no pickle file will be generated
+    :param use_joblib: save as joblib file, False by default. If joblib is true, no pickle file will be generated
     """
     ensure_dirs()
 
@@ -164,10 +155,11 @@ def save_coordinates(coordinates, folder_name, file_name, reference_name=""):
     if user_input_folder:
         input_df_path = os.path.join(user_input_folder, "input_" + file_name + ".csv")
         df = pd.read_csv(input_df_path)
-        df_coordinates = df.merge(coordinates, on='FP_HEX', how='left')
+        #ensure no duplicate FP_HEX in coordinates
+        df_coordinates = df.merge(coordinates.drop_duplicates(subset='FP_HEX'), on='FP_HEX', how='left')
 
     else:
-        print("Could find the coordinates, please check coordinates have already being calculated")
+        raise FileNotFoundError("Could not find the coordinates, please verify that coordinates have been calculated")
 
     if reference_name:
         file_name += "_on_" + reference_name
@@ -198,7 +190,7 @@ def load_model(file_name, from_zip=False, use_joblib=False):
     """
     Load model from pickle file (default) or from zip file (not implemented)
     :param file_name: name tag of the original data file (e.g. 'data_market' for 'data_market.csv')
-    :param from_zip: Load from zip file #todo implement this option
+    :param from_zip: Load from zip file
     :return: model object
     """
     print("--> Loading model")
@@ -227,7 +219,7 @@ def transform_target(model, fingerprints, offset, **kwargs):
 
     :param model: trained tSNE model
     :param fingerprints: fingerprint matrix, including a column "INCHIKEY"
-    :param offset: model-specific offset values to correct the transformed coordinates
+    :param offset: model-specific offset values to correct the transformed coordinate - 0 by default
     :return: coordinates of the input compounds in the tSNE space
     """
     # Prepare boolean fingerprint array
@@ -264,8 +256,6 @@ def lookup_target(fingerprints, reference_data):
     lookup_coordinates_df = pd.DataFrame()
     lookup_coordinates_df['FP_HEX'] = fingerprints['FP_HEX']
     lookup_coordinates_df = lookup_coordinates_df.merge(lookup_map, how='left', on='FP_HEX')
-    lookup_coordinates_df.index = lookup_coordinates_df['FP_HEX']
-    lookup_coordinates_df.drop(columns=['FP_HEX'], inplace=True)
     found_compounds = lookup_coordinates_df.dropna(subset=['TSNE1']).shape[0]
     print(f'{found_compounds} compounds (out of {fingerprints.shape[0]}) could be found in the reference space')
     return lookup_coordinates_df
@@ -284,18 +274,21 @@ def lookup_or_transform_target(model, fingerprints, offset, reference_data):
     lookup_coordinates_df = lookup_target(fingerprints, reference_data)
 
     # Get compounds for which no coordinates could be found in the reference space
-    remaining_compounds_df = lookup_coordinates_df[lookup_coordinates_df['TSNE1'].isnull()].drop(columns=['TSNE1','TSNE2'])
+    remaining_compounds_df = pd.DataFrame()
+    remaining_compounds_df['FP_HEX'] = lookup_coordinates_df[lookup_coordinates_df['TSNE1'].isnull()].drop(columns=['TSNE1','TSNE2'])['FP_HEX'].copy()
     print(f'The remaining {remaining_compounds_df.shape[0]} compounds (out of {fingerprints.shape[0]}) need to be transformed')
-
-    # get fingerprints for wich TSNE coordinates are missing
-    transform_fingerprints = remaining_compounds_df.merge(fingerprints, how='left', on='FP_HEX')
+    print(f'Remaining compounds have {remaining_compounds_df['FP_HEX'].nunique()} unique fingerprints')
+    # get fingerprints for which TSNE coordinates are missing
+    fingerprints_unique = fingerprints.drop_duplicates(subset='FP_HEX')
+    transform_fingerprints = remaining_compounds_df.merge(fingerprints_unique, how='left', on='FP_HEX')
 
     # transform fingerprints
     transform_coordinates_df =  transform_target(model, transform_fingerprints, offset)
 
     # add coordinates from lookup
-    lookup_coordinates = lookup_coordinates_df.dropna(subset=['TSNE1'])
-    coordinates_df = pd.concat([transform_coordinates_df, lookup_coordinates], axis=0)
+    lookup_coordinates_df.dropna(subset=['TSNE1'], inplace=True)
+    lookup_coordinates_df = lookup_coordinates_df[['TSNE1', 'TSNE2', 'FP_HEX']]
+    coordinates_df = pd.concat([transform_coordinates_df, lookup_coordinates_df], ignore_index=True)
     return coordinates_df
 
 # -----------------------------
