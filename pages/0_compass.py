@@ -27,10 +27,10 @@ def main():
         # current: v1.0.0
         # DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/20266750/files/demo_assets.zip")
         # DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/18723920/files/demo_assets.zip")
-        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/23569156/files/demo_assets.zip")
+        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/23590985/files/demo_assets.zip")
         # DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "16b0ecfa753c9f19ac6da2fad391024c")
         # DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "6ede94de0317fd5a7ecfe071bee8c47d")
-        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "4772d021784bbcc8188f87d9a4b8f848")
+        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "c54c9740070735b4fcdd2e88dd07ded4")
         ASSET_ROOT = get_demo_assets_root(DEMO_ZIP_URL, expected_md5=DEMO_ZIP_MD5)
 
     elif MODE == "test_demo":
