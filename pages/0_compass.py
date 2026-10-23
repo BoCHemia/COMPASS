@@ -21,7 +21,7 @@ def main():
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
 
     # MODE = 'test_demo'  # todo: !!!! remove !!!!
-    IS_DEMO = MODE == "test_demo"
+    IS_DEMO = MODE in ["demo", "test_demo"]
     # if IS_DEMO:
     if MODE == "demo":
         # current: v1.0.0
@@ -121,6 +121,7 @@ def main():
             # ensure _USER folder is there
             user_folder = os.path.join(ASSET_ROOT,'_USER')
             if not os.path.exists(user_folder):
+                print('Creating user folder', user_folder)
                 os.makedirs(user_folder)
 
             st.sidebar.warning(
