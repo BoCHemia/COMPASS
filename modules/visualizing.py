@@ -495,17 +495,3 @@ def map_input_data(fig, df, nametag = '',
 
     return merged_fig
 
-
-# old code for reference
-def get_color_class_mapping(folder_name, file_name):
-    df_reference_tsne = pd.read_csv(os.path.join(PROJECT_ROOT, 'data', folder_name, f'output_{file_name}.csv'))
-    # This is the palette I used in my publication for the top 15 most common ClassyFire Superclasses + some code snippets
-    palette = ['darkslategrey', 'teal', 'aquamarine', 'darkred', 'orangered', 'mediumpurple', 'darkorchid',
-                'mediumblue', 'royalblue', 'skyblue', 'darkgoldenrod', 'darkorange', 'gold',  'lightpink', 'hotpink',
-                'lightgrey']
-
-    top15 = df_reference_tsne.groupby('Superclass').count()['TSNE1'].sort_values(ascending=False).index[:15]
-    df_reference_tsne['Superclass (top 15)'] = df_reference_tsne['Superclass'].where(df_reference_tsne['Superclass'].isin(top15), 'Other')
-    hue_order = top15.sort_values().to_list() + ['Other']
-
-    return palette, top15, hue_order

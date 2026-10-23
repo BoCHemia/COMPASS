@@ -21,7 +21,7 @@ def main():
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
 
     # MODE = 'test_demo'  # todo: !!!! remove !!!!
-    IS_DEMO = MODE == "demo"
+    IS_DEMO = MODE == "test_demo"
     # if IS_DEMO:
     if MODE == "demo":
         # current: v1.0.0
@@ -440,9 +440,7 @@ def main():
 
                 def allowed_hue_columns(file_name):
                     classyfire = ['Kingdom', 'Superclass', 'Class', 'Subclass']
-                    if 'zeropm' in file_name:
-                        hue_columns = classyfire
-                    elif 'zhang' in file_name:
+                    if 'zhang' in file_name:
                         hue_columns = classyfire + ['Chemical class', 'Primary target class', 'Mode of action',
                                                     'Mode of action group']
                     else:
@@ -618,8 +616,9 @@ def main():
             else: # no target space
                 figure_1 = figure
 
-            selected = st.plotly_chart(figure_1, on_select='rerun', config={ "displaylogo": False,
-                                                                                "toImageButtonOptions": {
+            selected = st.plotly_chart(figure_1, on_select='rerun', config={
+                                                                            "displaylogo": False,
+                                                                            "toImageButtonOptions": {
                                                                                     "format": "png",
                                                                                     "filename": "chemical_space",
                                                                                     "height": 2000,
@@ -627,7 +626,6 @@ def main():
                                                                                     "scale": 2
                                                                                 }
                                                                              })
-
         # render selected molecule
         with col_info:
             if show:
@@ -636,25 +634,25 @@ def main():
                     selected_datapoint = selected["selection"]["points"]
                     if selected_datapoint:
                         # st.markdown(selected_datapoint[0])
-                        idx = selected_datapoint[0]["point_index"]
+                        name = selected_datapoint[0]['hovertext']
                         origin = selected_datapoint[0]["customdata"][-1] # data origin to be found
                         if 'reference space' in origin:
-                            row = reference_coordinates.iloc[idx]
+                            row = reference_coordinates[reference_coordinates['PREFERRED_NAME']==name]
                         elif 'target space' in origin:
-                            row = target_coordinates.iloc[idx]
+                            row = target_coordinates[target_coordinates['PREFERRED_NAME']==name]
                         else:
                             st.markdown(f"No data found for {origin}")
-
-                        mol = Chem.MolFromSmiles(row["SMILES"])
+                        # if several compounds have the same coordinates, only the first hit is shown
+                        first_row = row.iloc[0]
+                        # visualize smiles
+                        mol = Chem.MolFromSmiles(first_row["SMILES"])
                         st.image(Draw.MolToImage(mol, size=(300, 300)))
-
+                        # Add info
                         st.markdown("### Properties")
                         st.write(f"**Data origin:** {origin}")
-                        st.write(f"**Name:** {row['PREFERRED_NAME']}")
-                        st.write(f"**SMILES:** {row['SMILES']}")
-                        st.write(f"**InChIKey:** {row['INCHIKEY']}")
-
-
+                        st.write(f"**Name:** {name}")
+                        st.write(f"**SMILES:** {first_row['SMILES']}")
+                        st.write(f"**InChIKey:** {first_row['INCHIKEY']}")
                 else:
                     st.info("Select a molecule from the plot.")
 
