@@ -6,7 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 import plotly.express as px
 
-from modules.modeling import load_coordinates
+from modules.modeling import load_coordinates, save_coordinates
 from modules.visualizing import detect_color_type, plot_chemical_space, plot_similarity_histograms, plot_similarity_threshold_pie, plot_treemap
 from modules.preprocessing import get_demo_assets_root
 
@@ -19,23 +19,28 @@ def main():
     # ----------- APP MODE LOGIC (currently 'demo' or 'full') -----------
     # ---------------- The test_demo mode is only for testing the demo assets locally without downloading from Zenodo each time, and should not be exposed to users in the app; this is just for development purposes ----------------
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
-    print(MODE)  # "demo" or "full"
 
-    # MODE = 'server'  # todo: !!!! remove !!!!
-    IS_DEMO = MODE == "demo"
+    # MODE = 'test_demo'  # todo: !!!! remove !!!!
+    IS_DEMO = MODE == "test_demo"
     # if IS_DEMO:
     if MODE == "demo":
-        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/20266750/files/demo_assets.zip")
+        # current: v1.0.0
+        # DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/20266750/files/demo_assets.zip")
         # DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/18723920/files/demo_assets.zip")
+        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/23569156/files/demo_assets.zip")
         # DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "16b0ecfa753c9f19ac6da2fad391024c")
-        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "6ede94de0317fd5a7ecfe071bee8c47d")
- 
+        # DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "6ede94de0317fd5a7ecfe071bee8c47d")
+        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "4772d021784bbcc8188f87d9a4b8f848")
         ASSET_ROOT = get_demo_assets_root(DEMO_ZIP_URL, expected_md5=DEMO_ZIP_MD5)
+
     elif MODE == "test_demo":
         ASSET_ROOT = "demo_assets"  # for testing the demo assets locally without downloading from Zenodo each time
+        IS_DEMO = True
 
     else:
         ASSET_ROOT = "data"
+
+    print(f'MODE={MODE}, IS_DEMO={IS_DEMO}, ASSET_ROOT={ASSET_ROOT}')  # "demo" or "full"
 
     # ----------- CONFIGURATION SIDEBAR -----------
     # Streamlit app title
@@ -113,11 +118,15 @@ def main():
     # - Enable .csv upload when the user selects 'my_own_substances'
     if target_space == 'my_own_substances':
         if IS_DEMO:
-            st.sidebar.warning("Uploading your own dataset is only available using the full version." 
-            "The full versions is distributed using Docker and can be run locally on your machine;" 
-            "please follow this [link](https://github.com/BoCHemia/global-chemical-space/tree/develop) and refer to the README for instructions. ")
+            # ensure _USER folder is there
+            user_folder = os.path.join(ASSET_ROOT,'_USER')
+            if not os.path.exists(user_folder):
+                os.makedirs(user_folder)
 
-            st.stop()
+            st.sidebar.warning(
+            "With the demo version you can visualize own substances that are part of the reference space compounds. "
+            "Transforming your own dataset is available using the "
+            "[full version](https://github.com/BoCHemia/global-chemical-space/tree/develop) (local installation).")
 
         user_target_chemicals = st.file_uploader("Upload a CSV file with your chemical substances of interest. "
                                                  "Mandatory columns: 'SMILES', 'PREFERRED_NAME'", type="csv")
@@ -156,7 +165,7 @@ def main():
                         if col in df_user.columns})
 
             # save user input
-            df_user.to_csv(os.path.join('data', '_USER', 'raw_' + target_file_name + '.csv'), index=False)
+            df_user.to_csv(os.path.join(ASSET_ROOT, '_USER', 'raw_' + target_file_name + '.csv'), index=False)
 
             # Show the input data
             st.write("Uploaded data:", df_user)
@@ -193,9 +202,6 @@ def main():
             missing.append("reference space")
         if (available_ref_spaces_dict.get(reference_space)) and (reference_space_version is None):
             missing.append("reference version")
-
-        # if target_space is None:
-        #     missing.append("target space")
 
         if (available_ref_spaces_dict.get(target_space)) and (target_space_version is None):
             missing.append("target version")
@@ -234,8 +240,6 @@ def main():
         # one problem is that it would clear the cached csv too so consider more targeted cache clearing in the future
 
 
-    
-
     # ----------- END OF CONFIGURATION, START OF APP -----------
 
     # ----------- DATA LOADING AND TRANSFORMATION SECTION -----------
@@ -248,8 +252,21 @@ def main():
     # This capabilities thing can be used for an intermediate solution
     # For example "lightweight" app hosted by EAWAG with some of the smaller reference spaces. PFAS?
 
+    ###### Load selected datasets #####
+    @st.cache_data
+    def load_coordinates_to_cache(folder_name, file_name, reference_data=""):
+        # IMPORTANT: Cache the conversion to prevent computation on every rerun
+        return load_coordinates(folder_name, file_name, reference_data, base_dir=ASSET_ROOT)
 
-    if (not IS_DEMO) and (target_space == 'my_own_substances'):
+    @st.cache_data
+    def save_coordinates_to_cache(coordinates, folder_name, file_name, reference_name):
+        save_coordinates(coordinates, folder_name, file_name, reference_name, base_dir=ASSET_ROOT)
+
+    # load reference coordinates
+    reference_coordinates_full = load_coordinates_to_cache(reference_folder_name, reference_file_name)
+    print("Loading reference coordinates complete")
+
+    if target_space == 'my_own_substances':
         with st.spinner("Calculating the chemical space mapping; this may take several minutes", show_time=True):
             time.sleep(1)
 
@@ -269,16 +286,19 @@ def main():
             required = {"Superclass", "Class", "Subclass"}
             if not required.issubset(df_user.columns):
                 status_userdata.info("No ClassyFire information provided; complementing with available ClassyFire data.")
-                classyfire = pd.read_csv(os.path.join('data', 'ClassyFire', 'input_classyfire.csv'))
-                df_user = pd.merge(df_user, classyfire, on='INCHIKEY', how='left')
+                if IS_DEMO:
+                    df_user = pd.merge(df_user, reference_coordinates_full[list(required)+['INCHIKEY']], on='INCHIKEY', how='left')
+                else:
+                    classyfire = pd.read_csv(os.path.join(ASSET_ROOT, 'ClassyFire', 'input_classyfire.csv'))
+                    df_user = pd.merge(df_user, classyfire, on='INCHIKEY', how='left')
 
                 missing_cf = df_user['Superclass'].isna().sum()
                 if missing_cf>0:
-                    st.warning(f"ClassyFire information merged; {missing_cf} out of {len(df_user)} substances remain without taxonomy information.  \nConsider adding ClassyFire information to your input file.")
+                    st.warning(f"ClassyFire information found for {len(df_user)-missing_cf} out of {len(df_user)}.  \nConsider adding ClassyFire information to your input file.")
                 else:
                     status_userdata.status("ClassyFire information merged; all substances have taxonomy information.")
 
-                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name )
+                save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name, base_dir=ASSET_ROOT)
                 
                 progress_bar.progress(20)
                 status_userdata.info("User data was preprocessed and saved in user folder")
@@ -286,32 +306,41 @@ def main():
             # - fingerprints
             status_userdata.info("Calculating fingerprints")
             new_fingerprints, df_user = calculate_fingerprints(df_user)
-            save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name)
-            save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name)
+            save_user_file(user_dataframe=df_user, folder_name=target_folder_name, file_name=target_file_name, base_dir=ASSET_ROOT)
+            save_fingerprints(fingerprints=new_fingerprints, folder_name=target_folder_name, file_name=target_file_name, base_dir=ASSET_ROOT)
             
             progress_bar.progress(30)
             status_userdata.info("Fingerprints have been calculated and saved")
-            
-            # load tSNE model object
-            status_userdata.info("Loading trained reference model; this takes 1-3 mins")
 
-            from modules.modeling import (load_model, load_model_offset, transform_target, save_coordinates)
-            st.cache_resource(scope="session", show_spinner=True)(load_model)  # Cache the model loading to prevent reloading on every rerun; scope=session ensures it's loaded once per user session
-            model = load_model(reference_file_name, use_joblib=True)
+            if IS_DEMO:
+                from modules.modeling import lookup_target
+                # lookup user input data
+                target_coordinates = lookup_target(new_fingerprints, reference_coordinates_full)
+                # count number of compounds found through lookup
+                st.warning(f"Found {target_coordinates['TSNE1'].count()} out of {target_coordinates.shape[0]}"
+                         f" input target chemicals within {reference_folder_name} reference space")
 
-            st.cache_resource(scope="session", show_spinner=False)(load_model_offset)
-            offset = load_model_offset(reference_file_name)
+            else:
+                from modules.modeling import (load_model, load_model_offset, lookup_or_transform_target)
+                # load tSNE model object
+                status_userdata.info("Loading trained reference model; this takes 1-3 mins")
 
-            status_userdata.info("Loading model complete")
-            progress_bar.progress(75)
+                st.cache_resource(scope="session", show_spinner=True)(load_model)  # Cache the model loading to prevent reloading on every rerun; scope=session ensures it's loaded once per user session
+                model = load_model(reference_file_name)
 
-            # transform
-            status_userdata.info("Calculating coordinates for user target chemicals mapped into selected reference space")
-            target_coordinates = transform_target(model, new_fingerprints, offset)
+                st.cache_resource(scope="session", show_spinner=False)(load_model_offset)
+                offset = load_model_offset(reference_file_name)
+
+                status_userdata.info("Loading model complete")
+                progress_bar.progress(75)
+
+                # lookup or transform user input data
+                status_userdata.info("Calculating coordinates for user target chemicals mapped into selected reference space")
+                target_coordinates = lookup_or_transform_target(model, new_fingerprints, offset, reference_coordinates_full)
 
             progress_bar.progress(95)
             status_userdata.info("Calculation complete...saving coordinates.")
-            save_coordinates(coordinates=target_coordinates,
+            save_coordinates_to_cache(coordinates=target_coordinates,
                                 folder_name=target_folder_name,
                                 file_name=target_file_name,
                                 reference_name=reference_file_name)
@@ -322,8 +351,6 @@ def main():
             progress_bar.empty()
             status_userdata.empty()
 
-
-
     # ----------- Shared feature full app and demo -------------------------------------
     # - load reference and target coordinates
     project_progress_bar = st.progress(0)
@@ -333,18 +360,6 @@ def main():
 
         time.sleep(3)
         project_progress_bar.progress(10)
-
-        ###### Load selected datasets #####
-        @st.cache_data
-        def load_coordinates_to_cache(folder_name, file_name, reference_data=""):
-            # IMPORTANT: Cache the conversion to prevent computation on every rerun
-            return load_coordinates(folder_name, file_name, reference_data, base_dir=ASSET_ROOT)
-
-        # load reference coordinates
-        reference_coordinates_full = load_coordinates_to_cache(reference_folder_name, reference_file_name)
-        status.info("Loading reference coordinates complete")
-        project_progress_bar.progress(50)
-
 
         # The plotly for the reference space is still too much to handle when there are >25k points, so for the demo we will only show a subset of the reference space; for the full app we can show the full reference space since it will be hosted locally and not have the same performance issues as Streamlit Cloud; this is a temporary solution until we can implement more advanced solutions for handling large datasets in Streamlit Cloud (e.g., datashader, server-side rendering, etc.)
         if IS_DEMO:
@@ -425,9 +440,7 @@ def main():
 
                 def allowed_hue_columns(file_name):
                     classyfire = ['Kingdom', 'Superclass', 'Class', 'Subclass']
-                    if 'zeropm' in file_name:
-                        hue_columns = classyfire
-                    elif 'zhang' in file_name:
+                    if 'zhang' in file_name:
                         hue_columns = classyfire + ['Chemical class', 'Primary target class', 'Mode of action',
                                                     'Mode of action group']
                     else:
@@ -603,8 +616,9 @@ def main():
             else: # no target space
                 figure_1 = figure
 
-            selected = st.plotly_chart(figure_1, on_select='rerun', config={ "displaylogo": False,
-                                                                                "toImageButtonOptions": {
+            selected = st.plotly_chart(figure_1, on_select='rerun', config={
+                                                                            "displaylogo": False,
+                                                                            "toImageButtonOptions": {
                                                                                     "format": "png",
                                                                                     "filename": "chemical_space",
                                                                                     "height": 2000,
@@ -612,7 +626,6 @@ def main():
                                                                                     "scale": 2
                                                                                 }
                                                                              })
-
         # render selected molecule
         with col_info:
             if show:
@@ -621,25 +634,25 @@ def main():
                     selected_datapoint = selected["selection"]["points"]
                     if selected_datapoint:
                         # st.markdown(selected_datapoint[0])
-                        idx = selected_datapoint[0]["point_index"]
+                        name = selected_datapoint[0]['hovertext']
                         origin = selected_datapoint[0]["customdata"][-1] # data origin to be found
                         if 'reference space' in origin:
-                            row = reference_coordinates.iloc[idx]
+                            row = reference_coordinates[reference_coordinates['PREFERRED_NAME']==name]
                         elif 'target space' in origin:
-                            row = target_coordinates.iloc[idx]
+                            row = target_coordinates[target_coordinates['PREFERRED_NAME']==name]
                         else:
                             st.markdown(f"No data found for {origin}")
-
-                        mol = Chem.MolFromSmiles(row["SMILES"])
+                        # if several compounds have the same coordinates, only the first hit is shown
+                        first_row = row.iloc[0]
+                        # visualize smiles
+                        mol = Chem.MolFromSmiles(first_row["SMILES"])
                         st.image(Draw.MolToImage(mol, size=(300, 300)))
-
+                        # Add info
                         st.markdown("### Properties")
                         st.write(f"**Data origin:** {origin}")
-                        st.write(f"**Name:** {row['PREFERRED_NAME']}")
-                        st.write(f"**SMILES:** {row['SMILES']}")
-                        st.write(f"**InChIKey:** {row['INCHIKEY']}")
-
-
+                        st.write(f"**Name:** {name}")
+                        st.write(f"**SMILES:** {first_row['SMILES']}")
+                        st.write(f"**InChIKey:** {first_row['INCHIKEY']}")
                 else:
                     st.info("Select a molecule from the plot.")
 

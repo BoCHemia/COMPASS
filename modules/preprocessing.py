@@ -1,17 +1,8 @@
-import os
-import time
-import pickle
 import numpy as np
-import pandas as pd
 from pathlib import Path
-import pubchempy as pcp
 from rdkit import Chem, DataStructs
-from rdkit.Chem import AllChem
 from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.MolStandardize import rdMolStandardize
-import pubchempy as pcp
-import time
-
 
 # set project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -23,7 +14,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 def prepare_classyfire_data():
     input_path = os.path.join(PROJECT_ROOT, "data")
     classyfire_raw = pd.read_csv(os.path.join(input_path, "ClassyFire", "raw_classyfire.csv"))
-    classyfire = classyfire_raw.drop_duplicates() #todo: clean up - his line is not used
     classyfire = classyfire_raw.dropna(subset="Kingdom")
 
     hierarchy = ["Kingdom", "Superclass", "Class", "Subclass"]
@@ -31,9 +21,7 @@ def prepare_classyfire_data():
     for i in range(1, len(hierarchy)):
         lower = hierarchy[i]
         higher_levels = hierarchy[:i]
-
         row_mask = classyfire[higher_levels].eq(classyfire[lower], axis=0).any(axis=1)
-
         classyfire.loc[row_mask, lower] = np.nan
 
     classyfire["num_missing"] = classyfire[hierarchy].isna().sum(axis=1)
@@ -69,6 +57,8 @@ def calculate_fingerprints(df, radius=2, fpSize=1024, **kwargs):
     """
     Wrapper function to calculate fingerprints
     :param df: input dataframe with standardized SMILES
+    :param radius: radius of fingerprints
+    :param fpSize: size of fingerprints
     :**kwargs: fingerprint calculation parameters in addition to radius and fpSize (defaults provided)
     :return: pandas DataFrame of fingerprints, input df annoated with 'FP_HEX'
     """
@@ -87,6 +77,8 @@ def preprocess_data(df, radius=2, fpSize=1024, **kwargs):
     """
     Wrapper function to standardize SMILES, add InChIKeys and calculate fingerprints
     :param df: input dataframe loaded with load_input_file() or provided as user input
+    :param radius: radius of fingerprints
+    :param fpSize: size of fingerprints
     :**kwargs: fingerprint calculation parameters in addition to radius and fpSize (defaults provided)
     :return: pandas DataFrame of fingerprints
     """
@@ -94,7 +86,7 @@ def preprocess_data(df, radius=2, fpSize=1024, **kwargs):
     
     df = standardize_structures(df) # add standardized SMILES and INCHIKEY columns
 
-    df_fingerprints, df = calculate_fingerprints(df, radius=2, fpSize=1024, **kwargs)
+    df_fingerprints, df = calculate_fingerprints(df, radius=radius, fpSize=fpSize, **kwargs)
     
     print("Data preprocessed (standardized SMILES, INCHIKEY) and fingerprints calculated.")
 
@@ -115,14 +107,15 @@ def load_input_file(file_name, folder_name):
     return df
 
 
-def save_fingerprints(fingerprints, folder_name, file_name):
+def save_fingerprints(fingerprints, folder_name, file_name, base_dir="data"):
     """
     Save fingerprints to .csv file
     :param fingerprints: fingerprints dataframe
     :param file_name: name tag
+    :param folder_name: "input" data folder name
     """
     # out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
-    out_dir = os.path.join(PROJECT_ROOT, "data", folder_name)
+    out_dir = os.path.join(PROJECT_ROOT, base_dir, folder_name)
     os.makedirs(out_dir, exist_ok=True)
 
     fingerprints_path = os.path.join(out_dir, "fingerprints_" + file_name + '.csv')
@@ -134,7 +127,7 @@ def update_df(new_df, folder_name, file_name, target):
     new_df.to_csv(output_path, index=False)
     print('Saved new dataframe to', output_path)
 
-def save_user_file(user_dataframe, folder_name, file_name):
+def save_user_file(user_dataframe, folder_name, file_name, base_dir="data"):
     """
     Save file input file in user_folder for later use
     :param user_dataframe: typically a file uploaded by the user of the app
@@ -142,7 +135,7 @@ def save_user_file(user_dataframe, folder_name, file_name):
     :param file_name: file name provided by the user
     """
     # out_dir = os.path.join(PROJECT_ROOT, "temp", "fingerprints")
-    out_dir = os.path.join(PROJECT_ROOT, "data", folder_name)
+    out_dir = os.path.join(PROJECT_ROOT, base_dir, folder_name)
     os.makedirs(out_dir, exist_ok=True)
 
     user_file_path = os.path.join(out_dir, "input_" + file_name + '.csv')
@@ -154,7 +147,7 @@ def load_fingerprints(folder_name, file_name):
     """
 
     :param file_name:
-    :para folder_name: the folder from which fingerprints should be loaded
+    :param folder_name: the folder from which fingerprints should be loaded
     :return:
     """
     fingerprints_df_path = os.path.join(PROJECT_ROOT, "data", folder_name, "fingerprints_" + file_name + '.csv')
@@ -486,7 +479,6 @@ def calculate_descriptors_morgan_df(df, col_smiles="standardized SMILES", **kwar
 def get_inchikeys(smiles):
 
     mol = myMolFromSmiles(smiles)
-
     if pd.isna(smiles) or (smiles == "") or (mol is None):
         return np.nan
     

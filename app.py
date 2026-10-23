@@ -1,14 +1,7 @@
 import streamlit as st
-import pandas as pd
-import time
-import os
-from rdkit import Chem
-from rdkit.Chem import Draw
-import plotly.express as px
+import sys
 
-from modules.modeling import load_coordinates
-from modules.visualizing import detect_color_type, plot_chemical_space, plot_similarity_histograms, plot_similarity_threshold_pie, plot_treemap
-from modules.preprocessing import get_demo_assets_root
+print('Python %s on %s' % (sys.version, sys.platform))
 
 def main():
 

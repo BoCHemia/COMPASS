@@ -30,7 +30,7 @@ services:
     ports:
       - 8501:8501
     environment:
-      - COMPASS_MODE=test_demo
+      - COMPASS_MODE=demo
     volumes:
       - ./demo_assets:/app/demo_assets:ro
       - ./app.py:/app/app.py:ro
