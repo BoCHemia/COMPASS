@@ -24,7 +24,7 @@ def main():
     IS_DEMO = MODE in ["demo", "test_demo"]
     # if IS_DEMO:
     if MODE == "demo":
-        # current: v1.0.0
+        # current: v1.0.1
         # DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/20266750/files/demo_assets.zip")
         # DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/18723920/files/demo_assets.zip")
         DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/23590985/files/demo_assets.zip")
