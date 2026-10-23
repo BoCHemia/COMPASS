@@ -16,9 +16,9 @@ The application allows users to map chemical datasets onto harmonized reference 
 helping to locate and explore chemical data sets in relation to known chemical landscapes.""")
 st.subheader("Demo vs. full version")
 st.markdown("""
-The online [demo version](compass-demo.streamlit.app) has limited functionalities with predefined reference and target datasets.
-
-To map your own chemicals to one of the reference spaces, you can run COMPASS locally ([instructions here](https://github.com/BoCHemia/COMPASS)).
+The online [demo version](compass-demo.streamlit.app) can only map compounds that are already part of the selected reference space.
+To transform all of your own chemicals to one of the reference spaces using a pretrained t-SNE model, you can run COMPASS locally ([instructions here](https://github.com/BoCHemia/COMPASS)).
+The local installation requires approx. 10 GB of free storage space on your computer to store data and models.
 """)
 
 st.divider()
@@ -49,7 +49,7 @@ with st.expander("2️⃣ Select target chemicals"):
 Target compounds can be:
 
 - A predefined dataset
-- Your own dataset (full version only: see https://github.com/BoCHemia/COMPASS)
+- Your own dataset 
 
 Target compounds are projected into the selected reference space and displayed alongside the reference chemicals.
 """)
@@ -246,10 +246,6 @@ st.divider()
 
 st.header("📂 Upload Your Own Dataset")
 
-st.markdown("""
-Available only in the full version.
-""")
-
 with st.expander("Required File Format", expanded=True):
     st.markdown("""
 Input files must be CSV files containing at least:
@@ -289,7 +285,7 @@ st.header("🖥️ Full version")
 st.markdown("""
 When running the full version locally:
 
-- You can map your own list of chemicals
+- You can map your own list of chemicals (actually transform, not only look up in a reference space)
 - Uploaded files remain on your machine
 - Calculated TSNE coordinates and ClassyFire classifications are stored in `data/_USER/` and can be re-used for other purposes.
 """)
