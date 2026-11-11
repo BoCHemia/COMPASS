@@ -4,7 +4,7 @@ Visualize all 5 reference spaces
 Reads 5 CSV/TSV data files (columns: Superclass, TSNE1, TSNE2) and produces a
 3×2 figure with seaborn scatter panels (one per file) plus a legend panel.
 """
-
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -31,33 +31,37 @@ FILE_PATHS = [
     "../data/PFAS/output_pfas_nist_partial.csv",
 ]
 
-TOP_N = 10  # number of top superclasses to keep
-DIVERSE_LABEL = "Diverse"
+TOP_N = 11  # number of top superclasses to keep
+DIVERSE_LABEL = "NaN / Diverse"
 OUTPUT_FILE = "figure_reference_spaces.png"
 
 # ── 2. Read data ───────────────────────────────────────────────────────────────
 
 dfs = []
+datasize_table = []
 for path in FILE_PATHS:
     sep = "\t" if path.endswith((".tsv", ".txt")) else ","
     df = pd.read_csv(path, sep=sep)
     assert {"Superclass", "TSNE1", "TSNE2"}.issubset(df.columns), (
         f"{path} is missing required columns."
     )
+    datasize_table.append(len(df))
     dfs.append(df)
 
 # ── 3. Determine global top-N superclasses ─────────────────────────────────────
 
 all_superclasses = pd.concat([df["Superclass"] for df in dfs], ignore_index=True)
+all_superclasses.dropna(inplace=True) # do not include
 counts = Counter(all_superclasses)
 top_n = [sc for sc, _ in counts.most_common(TOP_N)]
 
 # ── 4. Build a consistent, global colour palette ───────────────────────────────
 
 # "Alphabet" palette has 26 colors; we need TOP_N + 1 (for Diverse)
-alphabet_colors = sns.color_palette('colorblind', n_colors=TOP_N + 1)
-palette = {sc: alphabet_colors[i] for i, sc in enumerate(top_n)}
-palette[DIVERSE_LABEL] = alphabet_colors[TOP_N]  # last colour for Diverse
+# colors = sns.color_palette('colorblind', n_colors=TOP_N + 1)
+colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99']
+palette = {sc: colors[i] for i, sc in enumerate(top_n)}
+palette[DIVERSE_LABEL] = "lightgrey"  # last colour for Diverse
 
 # Ordered list for the legend (top classes first, Diverse last)
 hue_order = top_n + [DIVERSE_LABEL]
@@ -70,6 +74,7 @@ def recode(df: pd.DataFrame) -> pd.DataFrame:
     df["Superclass_plot"] = df["Superclass"].where(
         df["Superclass"].isin(top_n), other=DIVERSE_LABEL
     )
+    df['Superclass_plot'] = df['Superclass_plot'].replace(np.nan, DIVERSE_LABEL)
     return df
 
 
@@ -82,21 +87,27 @@ fig, axes = plt.subplots(
     figsize=(10, 13),
 )
 fig.subplots_adjust(
-    left=0.07, right=0.97,
-    top=0.96, bottom=0.13,  # leave room at the bottom for the legend
-    hspace=0.35, wspace=0.30,
+    hspace=0.30
 )
 
 # ── 7. Draw scatter panels ─────────────────────────────────────────────────────
 
 dot_size = 3
+dot_size_table = [
+    3,      # "ZeroPM",
+    3,      # "COCONUT",
+    6,      # "DrugBank",
+    6,      # "PlastChem",
+    10,     # "AgroTrak",
+    10,     # "PFAS",
+]
 alpha = 0.6
 linewidth = 0
 
 # Plot Diverse first so named classes sit on top
 plot_order = [DIVERSE_LABEL] + top_n
 
-for ax, df, title in zip(axes.flat, dfs, DATASETS):
+for ax, df, title, dot_size, datasize in zip(axes.flat, dfs, DATASETS, dot_size_table, datasize_table):
     sns.scatterplot(
         data=df,
         x="TSNE1",
@@ -112,7 +123,7 @@ for ax, df, title in zip(axes.flat, dfs, DATASETS):
         rasterized=True,
     )
 
-    ax.set_title(title, fontsize=10, fontweight="bold")
+    ax.set_title(f'{title} (n={datasize})', fontsize=10, fontweight="bold")
     ax.set_xlabel("t-SNE 1", fontsize=8)
     ax.set_ylabel("t-SNE 2", fontsize=8)
     ax.tick_params(labelsize=7)
@@ -133,11 +144,11 @@ fig.legend(
     loc="lower center",
     bbox_to_anchor=(0.5, 0.0),  # centred, just below the subplots area
     frameon=False,
-    ncol=6,  # spread across 6 columns; adjust if needed
-    handlelength=1.2,
-    handleheight=1.0,
-    columnspacing=1.0,
-    handletextpad=0.5,
+    ncol=4,  # spread across 6 columns; adjust if needed
+    # handlelength=1.2,
+    # handleheight=1.0,
+    # columnspacing=1.0,
+    # handletextpad=0.5,
 )
 
 # ── 9. Save ────────────────────────────────────────────────────────────────────
