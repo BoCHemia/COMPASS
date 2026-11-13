@@ -22,13 +22,13 @@ def main():
     # each time, and should not be exposed to users in the app; this is just for development purposes
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
 
-    # MODE = 'full'  # todo: !!!! remove !!!!
+    # MODE = 'test_demo'  # todo: !!!! remove !!!!
     IS_DEMO = MODE in ["demo", "test_demo"]
 
     if MODE == "demo":
-        # current: v1.0.1
-        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/23590985/files/demo_assets.zip")
-        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "c54c9740070735b4fcdd2e88dd07ded4")
+        # current: v1.0.2
+        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/24192877/files/demo_assets.zip")
+        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "61fba1efecb2f5427373b4f82d24580f")
         ASSET_ROOT = get_demo_assets_root(DEMO_ZIP_URL, expected_md5=DEMO_ZIP_MD5)
 
     elif MODE == "test_demo":

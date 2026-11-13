@@ -131,6 +131,14 @@ def load_coordinates(folder_name, file_name, reference_data="", base_dir="data")
         file_name += f'_on_{reference_data}'
     coordinates_path = os.path.join(PROJECT_ROOT, base_dir, folder_name, "output_" + file_name + '.csv')
     coordinates = pd.read_csv(coordinates_path) #, usecols=minimal_columns)
+    # if not compound information is stored in the coordinates files, fetch it from the output file
+    # This helps to reduce demo data size
+    if '_on_' in file_name and 'PREFERRED_NAME' not in coordinates.columns: # only coordinates in file
+        target_chemical_space = file_name.split('_on_')[0]
+        data_path = os.path.join(PROJECT_ROOT, base_dir, folder_name, "output_" + target_chemical_space + '.csv')
+        data = pd.read_csv(data_path).drop(columns=['TSNE1', 'TSNE2'])
+        coordinates = data.merge(coordinates, on='FP_HEX', how='left')
+        print("Compound information loaded from loaded from {}".format(data_path))
     print("Coordinates loaded from {}".format(coordinates_path))
     return coordinates
 
