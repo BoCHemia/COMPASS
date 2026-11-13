@@ -159,6 +159,8 @@ def plot_chemical_space(df, nametag = '', map_on=None,
         elif color_type== 'binary': # binary coloring
             print("Use {} column to color map as binary".format(column_for_color_map))
             color_binary_map = palette
+            print(color_binary_map)
+            print(df['Similarity'])
             input_fig = px.scatter(df, x="TSNE1", y="TSNE2",
                                    hover_name = hover_name, hover_data=hover_data,
                                    render_mode="webgl", height=height, width=width, 

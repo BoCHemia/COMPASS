@@ -7,7 +7,8 @@ from rdkit.Chem import Draw
 import plotly.express as px
 
 from modules.modeling import load_coordinates, save_coordinates
-from modules.visualizing import detect_color_type, plot_chemical_space, plot_similarity_histograms, plot_similarity_threshold_pie, plot_treemap
+from modules.visualizing import (detect_color_type, plot_chemical_space, plot_similarity_histograms,
+                                 plot_similarity_threshold_pie, plot_treemap)
 from modules.preprocessing import get_demo_assets_root
 
 def main():
@@ -17,12 +18,13 @@ def main():
                        'TSNE1', 'TSNE2', 'Kingdom', 'Superclass','Class', 'Subclass']
 
     # ----------- APP MODE LOGIC (currently 'demo' or 'full') -----------
-    # ---------------- The test_demo mode is only for testing the demo assets locally without downloading from Zenodo each time, and should not be exposed to users in the app; this is just for development purposes ----------------
+    # The test_demo mode is only for testing the demo assets locally without downloading from Zenodo
+    # each time, and should not be exposed to users in the app; this is just for development purposes
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
 
-    # MODE = 'test_demo'  # todo: !!!! remove !!!!
+    # MODE = 'full'  # todo: !!!! remove !!!!
     IS_DEMO = MODE in ["demo", "test_demo"]
-    # if IS_DEMO:
+
     if MODE == "demo":
         # current: v1.0.1
         DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/23590985/files/demo_assets.zip")
@@ -536,12 +538,12 @@ def main():
                     similarity_target = knn_sim_self.iloc[:, 1:similarity_k + 1].mean(axis=1)
                     default = similarity_target.mean() - 0.5*similarity_target.std() # Tetko
 
-                    if similarity_threshold is None:
+                    if similarity_threshold is None: # "Similarity" is continuous
                         threshold = None
                         reference_coordinates['Similarity'] = similarity_ref
                         target_coordinates['Similarity'] = similarity_target
 
-                    else:
+                    else: # "Similarity" is binary (above threshol = True)
                         if similarity_threshold == 'default':
                             threshold = default
 
@@ -563,7 +565,7 @@ def main():
                 color_type_ref = detect_color_type(reference_coordinates[hue_ref])
                 # check custom palette
                 if custom_palette_ref:
-                    palette_ref = custom_palette_ref
+                    palette_ref = (custom_palette_ref if color_type_ref != 'binary' else binary_color_map)
                 else:
                     palette_ref = ('Alphabet' if color_type_ref == 'discrete'
                                    else binary_color_map if color_type_ref == 'binary'
@@ -590,7 +592,7 @@ def main():
                     color_type_target = detect_color_type(target_coordinates[hue_target])
                     # check custom palette
                     if custom_palette_target:
-                        palette_target = custom_palette_target
+                        palette_target = (custom_palette_target if color_type_target != 'binary' else binary_color_map)
                     else:
                         palette_target = ('Alphabet' if color_type_target == 'discrete'
                                             else binary_color_map if color_type_target == 'binary'

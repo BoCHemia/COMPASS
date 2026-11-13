@@ -1,5 +1,5 @@
 """
-Visualize all 5 reference spaces
+Visualize all 6 reference spaces
 ------------
 Reads 5 CSV/TSV data files (columns: Superclass, TSNE1, TSNE2) and produces a
 3×2 figure with seaborn scatter panels (one per file) plus a legend panel.
@@ -33,7 +33,7 @@ FILE_PATHS = [
 
 TOP_N = 11  # number of top superclasses to keep
 DIVERSE_LABEL = "NaN / Diverse"
-OUTPUT_FILE = "figure_reference_spaces.png"
+OUTPUT_FILE = "../output/figure_reference_spaces.png"
 
 # ── 2. Read data ───────────────────────────────────────────────────────────────
 
