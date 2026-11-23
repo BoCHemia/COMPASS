@@ -23,12 +23,12 @@ DATASETS = [
 ]
 
 FILE_PATHS = [
-    "../data/ZeroPM/output_zeropm_partial.csv",
-    "../data/COCONUT/output_coconut_partial.csv",
-    "../data/DrugBank/output_drugbank_5.1.13_partial.csv",
-    "../data/PlastChem/output_plastchem_db_v1.01_partial.csv",
-    "../data/AgroTrak/output_agrotrak_zhang_2025_partial.csv",
-    "../data/PFAS/output_pfas_nist_partial.csv",
+    "../data/ZeroPM/output_zeropm.csv",
+    "../data/COCONUT/output_coconut.csv",
+    "../data/DrugBank/output_drugbank_5.1.13.csv",
+    "../data/PlastChem/output_plastchem_db_v1.01.csv",
+    "../data/AgroTrak/output_agrotrak_zhang_2025.csv",
+    "../data/PFAS/output_pfas_nist.csv",
 ]
 
 TOP_N = 11  # number of top superclasses to keep

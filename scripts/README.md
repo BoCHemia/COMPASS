@@ -5,6 +5,7 @@ Developers can use the framework to add their own reference chemical spaces to C
 ## 1. Preprocessing
 
 For each database in COMPASS, the download and preprocessing steps are implemented and documented in the `prepare_[database].py` scripts.
+ClassyFire classes are added from a look-up table that is created once with `prepare_classyfire.py` before running the database scripts.
 
 ## 2. Training t-SNE models
 

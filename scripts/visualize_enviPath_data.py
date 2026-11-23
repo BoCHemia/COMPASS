@@ -79,7 +79,7 @@ save_fingerprints(fingerprints=new_fingerprints, file_name=file_name, folder_nam
 
 # transform on ZeroPM
 reference_folder = 'ZeroPM'
-reference_data_name =  'zeropm_partial'
+reference_data_name =  'zeropm'
 
 # # Alternatively: transform on NIST
 # reference_folder = "PFAS"
