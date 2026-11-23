@@ -271,6 +271,13 @@ Additional data columns may be provided, including:
 - Any other columns with categorical or continuous data
 
 Additional columns can later be used for coloring.
+
+**ClassyFire classes** provided in your file are always kept as they are. Substances without any ClassyFire class are
+complemented where possible:
+
+- Demo version: with the classes of the selected reference space (only for substances contained in it).
+- Full version: from the ClassyFire database ([Zenodo, v4](https://doi.org/10.5281/zenodo.20514155)), matched on the
+  first 14 characters of the InChIKey.
 """)
 
 st.divider()

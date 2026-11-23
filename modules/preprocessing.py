@@ -1,4 +1,8 @@
 import numpy as np
+import bisect
+import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 from pathlib import Path
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdFingerprintGenerator
@@ -11,20 +15,32 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Data and model loading
 # -----------------------------
 
-def get_classyfire_data(inchikeys):
+def get_classyfire_data(inchikeys, base_dir="data"):
     """
     Look up ClassyFire classes (Kingdom to Subclass) for a set of InChIKeys.
 
     Chemicals are matched on the first 14 characters of the InChIKey
     in input_classyfire.parquet, which is created by scripts/prepare_classyfire.py.
+    The look-up table is sorted by INCHIKEY14 and read one row group at a time, skipping row
+    groups that cannot contain any requested key, to keep memory use low (~150 MB).
 
     :param inchikeys: InChIKeys to look up
+    :param base_dir: base directory containing the ClassyFire folder (e.g. "data")
     :return: dataframe with columns INCHIKEY14, Kingdom, Superclass, Class, Subclass
     """
-    lookup_file = os.path.join(PROJECT_ROOT, "data", "ClassyFire", "input_classyfire.parquet")
-    wanted = pd.Series(inchikeys).dropna().str[:14].unique().tolist()
-    classyfire = pd.read_parquet(lookup_file, filters=[("INCHIKEY14", "in", wanted)])
-    return classyfire.astype(object)
+    lookup_file = os.path.join(PROJECT_ROOT, base_dir, "ClassyFire", "input_classyfire.parquet")
+    wanted = sorted(pd.Series(inchikeys).dropna().str[:14].unique())
+    parquet = pq.ParquetFile(lookup_file)
+    tables = []
+    for i in range(parquet.metadata.num_row_groups):
+        stats = parquet.metadata.row_group(i).column(0).statistics
+        j = bisect.bisect_left(wanted, stats.min)
+        if j == len(wanted) or wanted[j] > stats.max:
+            continue  # no requested key in this row group
+        row_group = parquet.read_row_group(i, use_threads=False)
+        tables.append(row_group.filter(pc.is_in(row_group.column("INCHIKEY14"), value_set=pa.array(wanted))))
+    classyfire = pa.concat_tables(tables) if tables else parquet.schema_arrow.empty_table()
+    return classyfire.to_pandas().astype(object)
 
 
 def standardize_structures(df):

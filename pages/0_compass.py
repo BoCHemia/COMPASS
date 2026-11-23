@@ -52,12 +52,12 @@ def main():
 
     # Step 1: Select reference space
     st.sidebar.markdown("### 1: Select reference chemical space")
-    available_ref_spaces_dict = {'DrugBank': ['5.1.13_partial'],  # should this automatically update with what is available in /data?
-                                    'PFAS': ['nist_partial'],
-                                    'PlastChem': ['db_v1.01_partial'],
-                                    'ZeroPM': ['partial'],
-                                    'COCONUT': ['partial'],
-                                    'AgroTrak': ['zhang_2025_partial']}
+    available_ref_spaces_dict = {'DrugBank': ['5.1.13'],  # should this automatically update with what is available in /data?
+                                    'PFAS': ['nist'],
+                                    'PlastChem': ['db_v1.01'],
+                                    'ZeroPM': [],
+                                    'COCONUT': [],
+                                    'AgroTrak': ['zhang_2025']}
     
     reference_space = st.sidebar.selectbox('Select reference chemical space"', label_visibility="collapsed",
                             placeholder='Choose an option',
@@ -272,7 +272,7 @@ def main():
             progress_bar = st.progress(0)
             status_userdata = st.empty()
 
-            from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints
+            from modules.preprocessing import standardize_structures, calculate_fingerprints, save_user_file, save_fingerprints, get_classyfire_data
 
             progress_bar.progress(5)
 
@@ -282,18 +282,34 @@ def main():
 
             progress_bar.progress(15)
 
-            required = {"Superclass", "Class", "Subclass"}
-            if not required.issubset(df_user.columns):
-                status_userdata.info("No ClassyFire information provided; complementing with available ClassyFire data.")
-                if IS_DEMO:
-                    df_user = pd.merge(df_user, reference_coordinates_full[list(required)+['INCHIKEY']], on='INCHIKEY', how='left')
-                else:
-                    classyfire = pd.read_csv(os.path.join(ASSET_ROOT, 'ClassyFire', 'input_classyfire.csv'))
-                    df_user = pd.merge(df_user, classyfire, on='INCHIKEY', how='left')
+            classyfire_columns = ["Kingdom", "Superclass", "Class", "Subclass"]
+            # add missing ClassyFire columns (empty), so that all four exist
+            for c in classyfire_columns:
+                if c not in df_user.columns:
+                    df_user[c] = None
+            df_user[classyfire_columns] = df_user[classyfire_columns].astype(object)
+
+            # ClassyFire information provided by the user is kept; only records without any
+            # ClassyFire information are complemented with available ClassyFire data
+            no_cf = df_user[classyfire_columns].isna().all(axis=1)
+            if no_cf.any():
+                status_userdata.info(f"No ClassyFire information provided for {no_cf.sum()} of {len(df_user)} substances; "
+                                     "complementing with available ClassyFire data.")
+                if IS_DEMO:  # classes of the selected reference space (exact InChIKey)
+                    classyfire = (reference_coordinates_full[["INCHIKEY"] + classyfire_columns]
+                                  .drop_duplicates(subset="INCHIKEY").set_index("INCHIKEY"))
+                    keys = df_user.loc[no_cf, "INCHIKEY"]
+                else:  # ClassyFire look-up table (first 14 InChIKey characters)
+                    classyfire = get_classyfire_data(df_user.loc[no_cf, "INCHIKEY"], base_dir=ASSET_ROOT).set_index("INCHIKEY14")
+                    keys = df_user.loc[no_cf, "INCHIKEY"].str[:14]
+                for c in classyfire_columns:
+                    df_user.loc[no_cf, c] = keys.map(classyfire[c]).values
 
                 missing_cf = df_user['Superclass'].isna().sum()
                 if missing_cf>0:
-                    st.warning(f"ClassyFire information found for {len(df_user)-missing_cf} out of {len(df_user)}.  \nConsider adding ClassyFire information to your input file.")
+                    found_cf = len(df_user) - missing_cf
+                    st.warning(f"ClassyFire information found for {found_cf} out of {len(df_user)} ({found_cf / len(df_user):.1%}).  \n"
+                               "Consider adding ClassyFire information to your input file to get a full classification.")
                 else:
                     status_userdata.status("ClassyFire information merged; all substances have taxonomy information.")
 
@@ -316,8 +332,10 @@ def main():
                 # lookup user input data
                 target_coordinates = lookup_target(new_fingerprints, reference_coordinates_full)
                 # count number of compounds found through lookup
-                st.warning(f"Found {target_coordinates['TSNE1'].count()} out of {target_coordinates.shape[0]}"
-                         f" input target chemicals within {reference_folder_name} reference space")
+                n_found, n_total = target_coordinates['TSNE1'].count(), target_coordinates.shape[0]
+                st.warning(f"Found {n_found} out of {n_total} ({n_found / n_total:.1%}) input target chemicals "
+                           f"within {reference_folder_name} reference space.  \n"
+                           "Consider mapping your own data in the Docker app (full version) to get a more complete mapping.")
 
             else:
                 from modules.modeling import (load_model, load_model_offset, lookup_or_transform_target)
