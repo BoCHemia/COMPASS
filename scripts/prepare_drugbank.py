@@ -60,43 +60,24 @@ df_std.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_noCF.csv
 # -----------------------------
 
 print("Merging with Classyfire data ...")
-classyfire = prepare_classyfire_data()
-df_classyfire = pd.merge(df_std, classyfire, on='INCHIKEY', how='left')
-
-# intermediate - partial classyfire
-#df_classyfire["num_missing"] = df_classyfire.isna().sum(axis=1)
-#df_classyfire = (df_classyfire.sort_values("num_missing").drop_duplicates(subset='standardized SMILES', keep="first").drop(columns="num_missing"))
-
-df_classyfire.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}_partial.csv"), index=False)
+classyfire = get_classyfire_data(df_std["INCHIKEY"])
+df_classyfire = (df_std.assign(INCHIKEY14=df_std["INCHIKEY"].str[:14])
+                 .merge(classyfire, on='INCHIKEY14', how='left').drop(columns='INCHIKEY14'))
 
 
 # -----------------------------
-# SAVE OR REQUEST MISSING DATA
+# REPORT MISSING DATA
 # -----------------------------
 
 df_missing = df_classyfire[df_classyfire['Kingdom'].isna()][["INCHIKEY", "SMILES"]]
 
-if len(df_missing)>0:
-    n=2000
-    n_splits = int(np.ceil(df_missing.shape[0]/n))
-    splits = np.array_split(df_missing.to_numpy(), n_splits)
+out_dir = os.path.join(temp_path, "ClassyFire")
+os.makedirs(out_dir, exist_ok=True)
+missing_path = os.path.join(out_dir, f"{file_name}_missing_classyfire.csv")
+df_missing.to_csv(missing_path, index=False)
 
-    out_dir = os.path.join(temp_path, "ClassyFire", folder_name, "batches_missing")
-    os.makedirs(out_dir, exist_ok=True)
+print(f"{len(df_missing)} of {len(df_classyfire)} entries ({len(df_missing)/len(df_classyfire):.1%}) have no ClassyFire classification. List saved in {missing_path}.")
 
-    # Save to .csv
-    for n, subset in enumerate(splits):
-        batch_path = os.path.join(out_dir, f"cf_batch_{n}.csv")
-        pd.DataFrame(subset).to_csv(batch_path, index=False, header=False)
-
-    print(f"{len(df_missing)} entries missing Classyfire data. Please run Classyfire batch mode on the files in {out_dir} and add results to raw_classyfire.csv. Then re-run this script.")
-
-else:
-    print(f"Data preparation complete. Saving input_drugbank_5.1.13.csv.")
-
-    #df_classyfire["num_missing"] = df_classyfire.isna().sum(axis=1)
-    #df_classyfire = (df_classyfire.sort_values("num_missing").drop_duplicates(subset='standardized SMILES', keep="first").drop(columns="num_missing"))
-
-    df_classyfire.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
-
-    print("Shape of DrugBank dataframe:", df_classyfire.shape)
+print(f"Data preparation complete. Saving input_{file_name}.csv.")
+df_classyfire.to_csv(os.path.join(input_path, folder_name, f"input_{file_name}.csv"), index=False)
+print("Shape of DrugBank dataframe:", df_classyfire.shape)

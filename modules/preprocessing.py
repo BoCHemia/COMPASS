@@ -11,25 +11,20 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Data and model loading
 # -----------------------------
 
-def prepare_classyfire_data():
-    input_path = os.path.join(PROJECT_ROOT, "data")
-    classyfire_raw = pd.read_csv(os.path.join(input_path, "ClassyFire", "raw_classyfire.csv"))
-    classyfire = classyfire_raw.dropna(subset="Kingdom")
+def get_classyfire_data(inchikeys):
+    """
+    Look up ClassyFire classes (Kingdom to Subclass) for a set of InChIKeys.
 
-    hierarchy = ["Kingdom", "Superclass", "Class", "Subclass"]
+    Chemicals are matched on the first 14 characters of the InChIKey
+    in input_classyfire.parquet, which is created by scripts/prepare_classyfire.py.
 
-    for i in range(1, len(hierarchy)):
-        lower = hierarchy[i]
-        higher_levels = hierarchy[:i]
-        row_mask = classyfire[higher_levels].eq(classyfire[lower], axis=0).any(axis=1)
-        classyfire.loc[row_mask, lower] = np.nan
-
-    classyfire["num_missing"] = classyfire[hierarchy].isna().sum(axis=1)
-    classyfire = (classyfire.sort_values("num_missing").drop_duplicates(subset='INCHIKEY', keep="first").drop(columns="num_missing"))
-
-    classyfire.to_csv(os.path.join(input_path, "ClassyFire", "input_classyfire.csv"), index=False)
-
-    return classyfire
+    :param inchikeys: InChIKeys to look up
+    :return: dataframe with columns INCHIKEY14, Kingdom, Superclass, Class, Subclass
+    """
+    lookup_file = os.path.join(PROJECT_ROOT, "data", "ClassyFire", "input_classyfire.parquet")
+    wanted = pd.Series(inchikeys).dropna().str[:14].unique().tolist()
+    classyfire = pd.read_parquet(lookup_file, filters=[("INCHIKEY14", "in", wanted)])
+    return classyfire.astype(object)
 
 
 def standardize_structures(df):
@@ -122,10 +117,12 @@ def save_fingerprints(fingerprints, folder_name, file_name, base_dir="data"):
     fingerprints.to_csv(fingerprints_path, index=False)
     print("Fingerprints saved to ", fingerprints_path)
 
+
 def update_df(new_df, folder_name, file_name, target):
     output_path = os.path.join(PROJECT_ROOT, "data", folder_name, target + "_" + file_name + '.csv')
     new_df.to_csv(output_path, index=False)
     print('Saved new dataframe to', output_path)
+
 
 def save_user_file(user_dataframe, folder_name, file_name, base_dir="data"):
     """
