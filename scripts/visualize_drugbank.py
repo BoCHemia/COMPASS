@@ -4,7 +4,7 @@ from modules.visualizing import *
 
 ###### Plot 0: ZeroPM on its own (Superclass) #####
 input_folder = 'ZeroPM'
-input_file = 'zeropm_partial'
+input_file = 'zeropm'
 coordinates = load_coordinates(folder_name=input_folder, file_name=input_file)
 
 figure = plot_chemical_space(coordinates, nametag='ZeroPM',
@@ -17,7 +17,7 @@ save_figure(figure, output_filename)
 
 ###### Plot 1: Drugbank on its own (Superclass) #####
 input_folder = 'DrugBank'
-input_file = 'drugbank_5.1.13_partial'
+input_file = 'drugbank_5.1.13'
 coordinates = load_coordinates(folder_name=input_folder, file_name=input_file)
 
 figure = plot_chemical_space(coordinates, nametag='DrugBank',
@@ -31,12 +31,12 @@ save_figure(figure, output_filename)
 ###### Plot 2: Drugbank on ZeroPM (Superclass) #####
 # load reference coordinates
 reference_folder = 'ZeroPM'
-reference_file =  'zeropm_partial'
+reference_file =  'zeropm'
 reference_coordinates = load_coordinates(reference_folder, reference_file)
 
 # load input coordinates, to be mapped to reference
 input_folder = 'DrugBank'
-input_file = 'drugbank_5.1.13_partial'
+input_file = 'drugbank_5.1.13'
 new_coordinates = load_coordinates(folder_name=input_folder, file_name=input_file, reference_data=reference_file)
 
 figure = plot_chemical_space(reference_coordinates, nametag='ZeroPM reference space', hover_name='PREFERRED_NAME', 
@@ -59,7 +59,7 @@ reference_coordinates = load_coordinates(reference_folder, reference_file)
 
 # load input coordinates, to be mapped to reference
 input_folder = 'DrugBank'
-input_file = 'drugbank_5.1.13_partial'
+input_file = 'drugbank_5.1.13'
 new_coordinates = load_coordinates(folder_name=input_folder, file_name=input_file, reference_data=reference_file)
 
 figure = plot_chemical_space(reference_coordinates, nametag='COCONUT reference space', hover_name='PREFERRED_NAME', 

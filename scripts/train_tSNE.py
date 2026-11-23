@@ -3,14 +3,14 @@ from modules.preprocessing import *
 
 #### input ####
 input_folder_name = "ZeroPM"
-input_data_name = "zeropm_partial"
+input_data_name = "zeropm"
 
 #### load preprocessed data and calculate fingerprints ####
 df = load_input_file(file_name=input_data_name, folder_name=input_folder_name)
 df_fingerprints, df = calculate_fingerprints(df)
 update_df(df, input_folder_name, input_data_name, 'input')
 raw_input_path = os.path.join(PROJECT_ROOT, "data", input_folder_name, f"input_{input_data_name}.csv")
-df.to_csv(raw_input_path) # save fingerprint hex to input
+df.to_csv(raw_input_path, index=False) # save fingerprint hex to input
 save_fingerprints(df_fingerprints, folder_name=input_folder_name, file_name=input_data_name)
 
 #### load training_array from fingerprints file ####

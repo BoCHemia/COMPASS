@@ -6,19 +6,19 @@ from modules.preprocessing import *
 import time
 
 # load tSNE model object
-reference_file_name = "zeropm_partial"
+reference_file_name = "zeropm"
 reference_folder_name = "ZeroPM"
 model = load_model(reference_file_name)
 offset = load_model_offset(reference_file_name)
 
 # load target data to plot
 datasets = [
-            # ("AgroTrak", "agrotrak_zhang_2025_partial"),
-            # ("COCONUT", "coconut_partial"),
-            # ("DrugBank", "drugbank_5.1.13_partial"),
-            ("PFAS", "pfas_nist_partial"),
-            # ("PlastChem", "plastchem_db_v1.01_partial"),
-            # ("ZeroPM", "zeropm_partial")
+            # ("AgroTrak", "agrotrak_zhang_2025"),
+            # ("COCONUT", "coconut"),
+            # ("DrugBank", "drugbank_5.1.13"),
+            ("PFAS", "pfas_nist"),
+            # ("PlastChem", "plastchem_db_v1.01"),
+            # ("ZeroPM", "zeropm")
             ]
 for folder_name, file_name in datasets:
 
