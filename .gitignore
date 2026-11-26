@@ -28,6 +28,7 @@ data/*
 models/*
 temp/*
 uploads/*
+output/*
 
 
 # Temporarily ignore fingerprints
