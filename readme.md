@@ -97,13 +97,13 @@ cd global-chemical-space
 Run:
 
 ``` bash
-download.bat
+python download_files.py
 ```
 
 This will automatically fetch required data and trained models from
 Zenodo.
 
-> ⚠️ Note: The full version requires the complete `data/`,  `models/` and `config/`
+> ⚠️ Note: The full version requires the complete `data/` and `models/`
 > folders.
 Please confirm that these folders exist and that they are located in the same level as `modules/` and `app.py` 
 ------------------------------------------------------------------------

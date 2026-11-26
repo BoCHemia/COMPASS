@@ -22,7 +22,7 @@ def main():
     # each time, and should not be exposed to users in the app; this is just for development purposes
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
 
-    MODE = 'test_demo'  # todo: !!!! remove !!!!
+    # MODE = 'test_demo'  # todo: !!!! remove !!!!
     IS_DEMO = MODE in ["demo", "test_demo"]
 
     if MODE == "demo":
