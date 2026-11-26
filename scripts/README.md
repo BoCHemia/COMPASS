@@ -19,6 +19,6 @@ The script `transform.py` takes a model (reference space) as input and transform
 
 The `visualize_[description].py` scripts reproduce figures from the COMPASS paper (!!! insert doi !!!):
 
-  - **Figure 1:** visualize_reference_spaces.py:    
-  - Data for **Figure 3:** preprocess_example_user_inputs.py:             
+  - **Figure 1:** visualize_reference_spaces.py   
+  - Data for **Figure 3:** preprocess_example_user_inputs.py          
 

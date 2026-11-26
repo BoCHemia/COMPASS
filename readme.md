@@ -21,7 +21,8 @@ The demo version:
 -   ✔ Allows exploration of predefined reference spaces
 -   ✔ Displays precomputed mappings
 -   ✔ Provides interactive visualizations
--   ❌ Does **not** allow uploading custom datasets
+-   ✔ Maps user input compounds into reference space (if possible)
+-   ❌ Does **not** allow calculation of t-SNE coordinates for compounds beyond the reference space
 
 If you want to visualize your own dataset on any reference space please use the 💻 Full Version (Local Execution) 
 
