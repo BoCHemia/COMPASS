@@ -22,7 +22,7 @@ def main():
     # each time, and should not be exposed to users in the app; this is just for development purposes
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
 
-    # MODE = 'test_demo'  # todo: !!!! remove !!!!
+    MODE = 'full'  # todo: !!!! remove !!!!
     IS_DEMO = MODE in ["demo", "test_demo"]
 
     if MODE == "demo":
@@ -440,6 +440,39 @@ def main():
         alpha_target = 0.7
 
         # - Color settings
+        custom_hex_30 = [
+            "#FFE033",  # bright yellow — Lipids and lipid-like molecules
+            "#1A7A6E",  # dark teal — Organoheterocyclic compounds
+            "#3ABFCF",  # turquoise — Benzenoids
+            "#9B5FA5",  # purple-pink — Hydrocarbons
+            "#D4A0CC",  # pale pink-purple — Hydrocarbon derivatives
+            "#C02040",  # deep red — Organic acids and derivatives
+            "#1530A8",  # deep navy-blue — Organic nitrogen compounds
+            "#ea5785",  # bright orange — Organic oxygen compounds
+            "#35B84A",  # forest green — Organohalogen compounds
+            "#bdad15",  # dark olive — Organosulfur compounds
+            "#FF8C42",  # orange — Organophosphorus compounds
+            "#5B2D8E",  # deep purple — Alkaloids and derivatives
+            "#B8E865",  # light green — Phenylpropanoids and polyketides
+            "#0F7A50",  # dark green — Lignans, neolignans and related compounds
+            "#45B8B3",  # teal — Nucleosides, nucleotides, and analogues
+            "#4A88D8",  # steel blue — Organometallic compounds
+            "#7A9FB5",  # muted blue-grey — Mixed metal/non-metal compounds
+            "#1A2255",  # dark navy — Homogeneous metal compounds
+            "#A8DCFA",  # pale sky blue — Homogeneous non-metal compounds
+            "#C5E5E0",  # pale aqua — Inorganic salts
+            "#245060",  # dark teal-grey — Miscellaneous inorganic compounds
+            "#2A0020",  # near-black — not assigned
+            "#C8389A",  # magenta — Organic 1,3-dipolar compounds
+            "#6B3030",  # dark brown-red — Acetylides
+            "#C8C0F0",  # pale lavender — Allenes
+            "#7A0848",  # dark wine — Carbides
+            "#8870E0",  # lavender — Organic Polymers
+            "#FFD8A0",  # pale peach — Organic salts
+            "#FF85B0",  # pink — Organic cations
+            "#7AFFD8",  # mint — Organic anions
+        ]
+        setattr(px.colors.qualitative, 'Chemistry_30', custom_hex_30)
         available_palettes_discrete = [
             name for name in dir(px.colors.qualitative)
             if not name.startswith("_")

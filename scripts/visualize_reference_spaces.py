@@ -53,14 +53,46 @@ for path in FILE_PATHS:
 all_superclasses = pd.concat([df["Superclass"] for df in dfs], ignore_index=True)
 all_superclasses.dropna(inplace=True) # do not include
 counts = Counter(all_superclasses)
-top_n = [sc for sc, _ in counts.most_common(TOP_N)]
+top_n = [sc for sc, _ in counts.most_common(TOP_N)] # sc: superclass
 
 # ── 4. Build a consistent, global colour palette ───────────────────────────────
 
 # "Alphabet" palette has 26 colors; we need TOP_N + 1 (for Diverse)
 # colors = sns.color_palette('colorblind', n_colors=TOP_N + 1)
-colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99']
-palette = {sc: colors[i] for i, sc in enumerate(top_n)}
+# colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99']
+color_map = {
+    'Lipids and lipid-like molecules': "#FFE033",  # bright yellow — Lipids and lipid-like molecules
+    'Organoheterocyclic compounds': "#1A7A6E",  # dark teal — Organoheterocyclic compounds
+    'Benzenoids': "#3ABFCF",  # turquoise — Benzenoids
+    'Hydrocarbons': "#9B5FA5",  # purple-pink — Hydrocarbons
+    'Hydrocarbon derivatives': "#D4A0CC",  # pale pink-purple — Hydrocarbon derivatives
+    'Organic acids and derivatives': "#C02040",  # deep red — Organic acids and derivatives
+    'Organic nitrogen compounds': "#1530A8",  # deep navy-blue — Organic nitrogen compounds
+    'Organic oxygen compounds': "#ea5785",  # bright orange — Organic oxygen compounds
+    'Organohalogen compounds': "#35B84A",  # forest green — Organohalogen compounds
+    'Organosulfur compounds': "#bdad15",  # dark olive — Organosulfur compounds
+    'Organophosphorus compounds': "#FF8C42",  # orange — Organophosphorus compounds
+    'Alkaloids and derivatives': "#5B2D8E",  # deep purple — Alkaloids and derivatives
+    'Phenylpropanoids and polyketides': "#B8E865",  # light green — Phenylpropanoids and polyketides
+    'Lignans, neolignans and related compounds': "#0F7A50",  # dark green — Lignans, neolignans and related compounds
+    'Nucleosides, nucleotides, and analogues': "#45B8B3",  # teal — Nucleosides, nucleotides, and analogues
+    'Organometallic compounds': "#4A88D8",  # steel blue — Organometallic compounds
+    'Mixed metal/non-metal compounds': "#7A9FB5",  # muted blue-grey — Mixed metal/non-metal compounds
+    'Homogeneous metal compounds': "#1A2255",  # dark navy — Homogeneous metal compounds
+    'Homogeneous non-metal compounds': "#A8DCFA",  # pale sky blue — Homogeneous non-metal compounds
+    'Inorganic salts': "#C5E5E0",  # pale aqua — Inorganic salts
+    'Miscellaneous inorganic compounds': "#245060",  # dark teal-grey — Miscellaneous inorganic compounds
+    'not assigned': "#2A0020",  # near-black — not assigned
+    'Organic 1,3-dipolar compounds': "#C8389A",  # magenta — Organic 1,3-dipolar compounds
+    'Acetylides': "#6B3030",  # dark brown-red — Acetylides
+    'Allenes': "#C8C0F0",  # pale lavender — Allenes
+    'Carbides': "#7A0848",  # dark wine — Carbides
+    'Organic Polymers': "#8870E0",  # lavender — Organic Polymers
+    'Organic salts': "#FFD8A0",  # pale peach — Organic salts
+    'Organic cations': "#FF85B0",  # pink — Organic cations
+    'Organic anions': "#7AFFD8",  # mint — Organic anions
+}
+palette = {sc: color_map[sc] for sc in top_n}
 palette[DIVERSE_LABEL] = "lightgrey"  # last colour for Diverse
 
 # Ordered list for the legend (top classes first, Diverse last)
