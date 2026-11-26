@@ -22,13 +22,13 @@ def main():
     # each time, and should not be exposed to users in the app; this is just for development purposes
     MODE = os.getenv("COMPASS_MODE", "demo").strip().lower()
 
-    MODE = 'full'  # todo: !!!! remove !!!!
+    MODE = 'test_demo'  # todo: !!!! remove !!!!
     IS_DEMO = MODE in ["demo", "test_demo"]
 
     if MODE == "demo":
-        # current: v1.0.2
-        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/24192877/files/demo_assets.zip")
-        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "61fba1efecb2f5427373b4f82d24580f")
+        # current: v1.0.3
+        DEMO_ZIP_URL = os.getenv("COMPASS_DEMO_ZIP_URL", "https://zenodo.org/records/24564027/files/demo_assets.zip")
+        DEMO_ZIP_MD5 = os.getenv("COMPASS_DEMO_ZIP_MD5", "49ff25cde544d7a3ec066dcba1d82721")
         ASSET_ROOT = get_demo_assets_root(DEMO_ZIP_URL, expected_md5=DEMO_ZIP_MD5)
 
     elif MODE == "test_demo":
@@ -441,7 +441,7 @@ def main():
 
         # - Color settings
         custom_hex_30 = [
-            "#FFE033",  # bright yellow — Lipids and lipid-like molecules
+            "#f9f871",  # bright yellow — Lipids and lipid-like molecules
             "#1A7A6E",  # dark teal — Organoheterocyclic compounds
             "#3ABFCF",  # turquoise — Benzenoids
             "#9B5FA5",  # purple-pink — Hydrocarbons
@@ -450,7 +450,7 @@ def main():
             "#1530A8",  # deep navy-blue — Organic nitrogen compounds
             "#ea5785",  # bright orange — Organic oxygen compounds
             "#35B84A",  # forest green — Organohalogen compounds
-            "#bdad15",  # dark olive — Organosulfur compounds
+            "#948800",  # dark olive — Organosulfur compounds
             "#FF8C42",  # orange — Organophosphorus compounds
             "#5B2D8E",  # deep purple — Alkaloids and derivatives
             "#B8E865",  # light green — Phenylpropanoids and polyketides

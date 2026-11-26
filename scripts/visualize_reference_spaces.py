@@ -31,7 +31,7 @@ FILE_PATHS = [
     "../data/PFAS/output_pfas_nist.csv",
 ]
 
-TOP_N = 11  # number of top superclasses to keep
+TOP_N = 15  # number of top superclasses to keep
 DIVERSE_LABEL = "NaN / Diverse"
 OUTPUT_FILE = "../output/figure_reference_spaces.png"
 
@@ -61,7 +61,7 @@ top_n = [sc for sc, _ in counts.most_common(TOP_N)] # sc: superclass
 # colors = sns.color_palette('colorblind', n_colors=TOP_N + 1)
 # colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99']
 color_map = {
-    'Lipids and lipid-like molecules': "#FFE033",  # bright yellow — Lipids and lipid-like molecules
+    'Lipids and lipid-like molecules': "#f9f871",  # bright yellow — Lipids and lipid-like molecules
     'Organoheterocyclic compounds': "#1A7A6E",  # dark teal — Organoheterocyclic compounds
     'Benzenoids': "#3ABFCF",  # turquoise — Benzenoids
     'Hydrocarbons': "#9B5FA5",  # purple-pink — Hydrocarbons
@@ -127,19 +127,27 @@ fig.subplots_adjust(
 dot_size = 3
 dot_size_table = [
     3,      # "ZeroPM",
-    3,      # "COCONUT",
+    2,      # "COCONUT",
     6,      # "DrugBank",
     6,      # "PlastChem",
-    10,     # "AgroTrak",
+    13,     # "AgroTrak",
     10,     # "PFAS",
 ]
 alpha = 0.6
+alpha_size_table = [
+    0.15,      # "ZeroPM",
+    0.05,      # "COCONUT",
+    0.4,      # "DrugBank",
+    0.4,      # "PlastChem",
+    0.6,     # "AgroTrak",
+    0.5,     # "PFAS",
+]
 linewidth = 0
 
 # Plot Diverse first so named classes sit on top
 plot_order = [DIVERSE_LABEL] + top_n
 
-for ax, df, title, dot_size, datasize in zip(axes.flat, dfs, DATASETS, dot_size_table, datasize_table):
+for ax, df, title, dot_size, alpha_size, datasize in zip(axes.flat, dfs, DATASETS, dot_size_table, alpha_size_table, datasize_table):
     sns.scatterplot(
         data=df,
         x="TSNE1",
@@ -148,7 +156,7 @@ for ax, df, title, dot_size, datasize in zip(axes.flat, dfs, DATASETS, dot_size_
         hue_order=plot_order,
         palette=palette,
         s=dot_size,
-        alpha=alpha,
+        alpha=alpha_size,
         linewidth=linewidth,
         ax=ax,
         legend=False,  # unified legend drawn separately
@@ -172,7 +180,7 @@ fig.legend(
     handles=handles,
     title="Superclass",
     title_fontsize=9,
-    fontsize=8,
+    fontsize=7,
     loc="lower center",
     bbox_to_anchor=(0.5, 0.0),  # centred, just below the subplots area
     frameon=False,
